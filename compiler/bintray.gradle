@@ -1,0 +1,67 @@
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+
+group = rootProject.ext.groupId
+version = rootProject.ext.versionName
+
+task sourcesJar(type: Jar) {
+    from files('src/main/java')
+    classifier = 'sources'
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifact file("build/libs/compiler-release-${rootProject.ext.versionName}.jar")
+            artifact sourcesJar
+            pom.withXml {
+                Node root = asNode()
+                root.appendNode('name', 'rxsqlite')
+                root.appendNode('description', 'Reactive extension of SQLite for Android')
+                root.appendNode('url', 'https://github.com/DanielSerdyukov/rxsqlite')
+
+                def issues = root.appendNode('issueManagement')
+                issues.appendNode('system', 'github')
+                issues.appendNode('url', 'https://github.com/DanielSerdyukov/rxsqlite/issues')
+
+                def scm = root.appendNode('scm')
+                scm.appendNode('url', 'scm:https://github.com/DanielSerdyukov/rxsqlite.git')
+                scm.appendNode('connection', 'scm:https://github.com/DanielSerdyukov/rxsqlite.git')
+                scm.appendNode('developerConnection', 'scm:https://github.com/DanielSerdyukov/rxsqlite.git')
+
+                def license = root.appendNode('licenses').appendNode('license')
+                license.appendNode('name', 'The Apache Software License, Version 2.0')
+                license.appendNode('url', 'http://www.apache.org/licenses/LICENSE-2.0.txt')
+                license.appendNode('distribution', 'repo')
+
+                def dependencies = root.appendNode('dependencies')
+                ['compile'].each { scope ->
+                    project.configurations[scope].allDependencies.findAll { it.group }.each {
+                        def dependency = dependencies.appendNode('dependency')
+                        dependency.appendNode('groupId', it.group)
+                        dependency.appendNode('artifactId', it.name)
+                        dependency.appendNode('version', it.version)
+                        dependency.appendNode('scope', scope)
+                    }
+                }
+            }
+        }
+    }
+}
+
+bintray {
+    user = bintrayUser
+    key = bintrayKey
+    configurations = ['archives']
+    publications = ['mavenJava']
+    publish = true
+    pkg {
+        repo = 'maven'
+        name = project.group
+        licenses = ['Apache-2.0']
+        version {
+            name = rootProject.ext.versionName
+            vcsTag = rootProject.ext.versionName
+        }
+    }
+}

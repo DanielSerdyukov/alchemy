@@ -1,0 +1,45 @@
+import org.gradle.internal.jvm.Jvm
+import proguard.gradle.ProGuardTask
+
+apply plugin: 'java'
+
+sourceCompatibility = JavaVersion.VERSION_1_7
+targetCompatibility = JavaVersion.VERSION_1_7
+
+configurations {
+    testCompile.exclude group: 'com.android.support'
+}
+
+dependencies {
+    compile 'com.squareup:javapoet:1.5.1'
+    compile 'com.google.auto.service:auto-service:1.0-rc2'
+    compile 'com.google.auto:auto-common:0.5'
+    compile deps.rxjava
+    compile files(Jvm.current().toolsJar)
+
+    testCompile(deps.sqlite4a) {
+        exclude group: 'com.android.support'
+    }
+    testCompile files('../library/build/intermediates/bundles/release/classes.jar')
+    testCompile deps.hamcrest
+    testCompile 'com.google.truth:truth:0.28'
+    testCompile 'com.google.testing.compile:compile-testing:0.8'
+}
+
+task proguard(type: ProGuardTask) {
+    configuration 'proguard.pro'
+
+    injars "${project.buildDir}/libs/compiler-${rootProject.ext.versionName}.jar"
+    outjars "${project.buildDir}/libs/compiler-release-${rootProject.ext.versionName}.jar"
+
+    libraryjars Jvm.current().runtimeJar.absolutePath
+    libraryjars Jvm.current().toolsJar.absolutePath
+
+    printmapping "${project.buildDir}/tmp/mapping.txt"
+    printusage "${project.buildDir}/tmp/usage.txt"
+    dump "${project.buildDir}/tmp/dump.txt"
+}
+
+if (project.hasProperty('bintrayUser')) {
+    apply from: 'bintray.gradle'
+}

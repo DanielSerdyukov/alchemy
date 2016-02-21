@@ -1,0 +1,18 @@
+before_script:
+  - gradle clean checkstyle
+
+tests:
+  script:
+    - gradle testDebugUnitTest
+  tags:
+    - android
+  only:
+    - master
+
+bintray_deploy:
+  script:
+    - gradle :library:assembleRelease :compiler:assemble :compiler:proguard publishToMavenLocal bintrayUpload
+  tags:
+    - android
+  only:
+    - /^v.*$/

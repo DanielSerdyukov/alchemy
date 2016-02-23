@@ -12,6 +12,7 @@ task sourcesJar(type: Jar) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            pom { packaging 'jar' }
             artifact file("build/libs/compiler-release-${rootProject.ext.versionName}.jar")
             artifact sourcesJar
             pom.withXml {
@@ -57,7 +58,7 @@ bintray {
     publish = true
     pkg {
         repo = 'maven'
-        name = project.group
+        name = 'rxsqlite-compiler'
         licenses = ['Apache-2.0']
         version {
             name = rootProject.ext.versionName

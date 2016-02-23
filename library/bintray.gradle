@@ -16,7 +16,6 @@ artifacts {
 publishing {
     publications {
         mavenAndroid(MavenPublication) {
-            artifactId 'library'
             pom { packaging 'aar' }
             artifact file('build/outputs/aar/library-release.aar')
             artifact sourcesJar
@@ -63,7 +62,7 @@ bintray {
     publish = true
     pkg {
         repo = 'maven'
-        name = project.group
+        name = 'rxsqlite'
         licenses = ['Apache-2.0']
         version {
             name = rootProject.ext.versionName

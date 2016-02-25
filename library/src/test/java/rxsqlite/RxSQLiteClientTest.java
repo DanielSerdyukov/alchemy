@@ -1,6 +1,5 @@
 package rxsqlite;
 
-import android.content.Context;
 import android.util.Log;
 
 import org.hamcrest.core.Is;
@@ -61,10 +60,7 @@ public class RxSQLiteClientTest {
     private Action3<SQLiteDb, Integer, Integer> mOnUpgrade;
 
     @Mock
-    private RxSQLiteBinder mBinder;
-
-    @Mock
-    private RxSQLiteType mMockType;
+    private Types mTypes;
 
     private RxSQLiteClient mClient;
 
@@ -76,91 +72,15 @@ public class RxSQLiteClientTest {
         Mockito.when(databaseDir.mkdirs()).thenReturn(true);
         final File databasePath = Mockito.mock(File.class);
         Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
-        mClient = Mockito.spy(RxSQLiteClient.builder(databasePath, 2)
+        mClient = Mockito.spy(new RxSQLiteClient(RxSQLiteClient
+                .builder(databasePath, 2)
                 .doOnOpen(mOnOpen)
                 .doOnCreate(mOnCreate)
-                .doOnUpgrade(mOnUpgrade)
-                .registerCustomType(mMockType)
-                .build());
+                .doOnUpgrade(mOnUpgrade), mTypes));
         Mockito.doReturn(0).when(mClient).getDatabaseVersion(mDb);
         Mockito.doReturn(mDb).when(mClient).openDatabase(Mockito.anyString(), Mockito.anyInt());
         Mockito.doReturn(mStmt).when(mDb).prepare(Mockito.anyString());
         Mockito.doReturn(mRowSet).when(mStmt).executeSelect();
-        Mockito.doReturn(mBinder).when(mClient).getBinder();
-    }
-
-    @Test
-    public void testMemoryBuilder() throws Exception {
-        final SQLiteDb db = Mockito.mock(SQLiteDb.class);
-        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory().build());
-        Mockito.doReturn(0).when(client).getDatabaseVersion(db);
-        Mockito.doReturn(db).when(client).openDatabase(Mockito.anyString(), Mockito.anyInt());
-
-        client.openAndConfigureDatabase();
-        Mockito.verify(client).openDatabase("file::memory:?cache=shared", SQLiteDb.OPEN_READWRITE
-                | SQLiteDb.OPEN_CREATE | SQLiteDb.OPEN_URI);
-    }
-
-    @Test
-    public void testContextBuilder() throws Exception {
-        final Context context = Mockito.mock(Context.class);
-        final File databaseDir = Mockito.mock(File.class);
-        Mockito.when(databaseDir.mkdirs()).thenReturn(true);
-        final File databasePath = Mockito.mock(File.class);
-        Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
-        Mockito.when(databasePath.getAbsolutePath()).thenReturn("/mock/main.db");
-        Mockito.doReturn(databasePath).when(context).getDatabasePath(Mockito.anyString());
-
-        final SQLiteDb db = Mockito.mock(SQLiteDb.class);
-        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.builder(context, 1).build());
-        Mockito.doReturn(0).when(client).getDatabaseVersion(db);
-        Mockito.doReturn(db).when(client).openDatabase(Mockito.anyString(), Mockito.anyInt());
-
-        client.openAndConfigureDatabase();
-        Mockito.verify(client).openDatabase("/mock/main.db", SQLiteDb.OPEN_READWRITE | SQLiteDb.OPEN_CREATE);
-    }
-
-    @Test
-    public void testFileBuilder() throws Exception {
-        final File databaseDir = Mockito.mock(File.class);
-        Mockito.when(databaseDir.mkdirs()).thenReturn(true);
-        final File databasePath = Mockito.mock(File.class);
-        Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
-        Mockito.when(databasePath.getAbsolutePath()).thenReturn("/mock/main.db");
-
-        final SQLiteDb db = Mockito.mock(SQLiteDb.class);
-        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient
-                .builder(databasePath, SQLiteDb.OPEN_READONLY, 1).build());
-        Mockito.doReturn(0).when(client).getDatabaseVersion(db);
-        Mockito.doReturn(db).when(client).openDatabase(Mockito.anyString(), Mockito.anyInt());
-
-        client.openAndConfigureDatabase();
-        Mockito.verify(client).openDatabase("/mock/main.db", SQLiteDb.OPEN_READONLY);
-    }
-
-    @Test
-    public void testFileBuilderWithoutFlags() throws Exception {
-        final File databaseDir = Mockito.mock(File.class);
-        Mockito.when(databaseDir.exists()).thenReturn(true);
-        final File databasePath = Mockito.mock(File.class);
-        Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
-        Mockito.when(databasePath.getAbsolutePath()).thenReturn("/mock/main.db");
-
-        final SQLiteDb db = Mockito.mock(SQLiteDb.class);
-        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.builder(databasePath, 1).build());
-        Mockito.doReturn(0).when(client).getDatabaseVersion(db);
-        Mockito.doReturn(db).when(client).openDatabase(Mockito.anyString(), Mockito.anyInt());
-
-        client.openAndConfigureDatabase();
-        Mockito.verify(client).openDatabase("/mock/main.db", SQLiteDb.OPEN_READWRITE | SQLiteDb.OPEN_CREATE);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testEnsureDatabasePathExists() throws Exception {
-        final File databaseDir = Mockito.mock(File.class);
-        final File databasePath = Mockito.mock(File.class);
-        Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
-        RxSQLiteClient.ensureDatabasePathExists(databasePath);
     }
 
     @Test
@@ -193,8 +113,8 @@ public class RxSQLiteClientTest {
         subscriber.assertCompleted();
         Mockito.verify(mClient).acquireDatabase(Mockito.<Queue>any());
         Mockito.verify(mDb).prepare("SELECT * FROM foo WHERE id = ? AND name = ?");
-        Mockito.verify(mBinder).bindValue(mStmt, 1, 100L);
-        Mockito.verify(mBinder).bindValue(mStmt, 2, "Joe");
+        Mockito.verify(mTypes).bindValue(mStmt, 1, 100L);
+        Mockito.verify(mTypes).bindValue(mStmt, 2, "Joe");
         Mockito.verify(factory, Mockito.times(3)).call(Mockito.any(SQLiteRow.class));
         Mockito.verify(mStmt).close();
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
@@ -309,7 +229,7 @@ public class RxSQLiteClientTest {
         final RxSQLiteTable table = Mockito.mock(RxSQLiteTable.class);
         final List<RxSQLiteTable<?>> tables = Collections.<RxSQLiteTable<?>>singletonList(table);
         mClient.createAutoGeneratedSchema(mDb, tables);
-        Mockito.verify(table).create(mDb, mBinder);
+        Mockito.verify(table).create(mDb);
     }
 
     @Test

@@ -35,14 +35,13 @@ public final class RxSQLite {
     @NonNull
     public static <T> Observable<T> query(@NonNull final Class<T> type, @NonNull final RxSQLiteWhere where) {
         final RxSQLiteClient client = requireClientNotNull();
-        return client.execute(RxFuncs.query(client, type, where.toSelectSql(),
-                where.getBindValues(), client.getBinder()));
+        return client.execute(Funcs.query(client, type, where.toSelectSql(), where.getBindValues()));
     }
 
     @NonNull
     public static <T> Observable<T> save(@NonNull T object) {
         final RxSQLiteClient client = requireClientNotNull();
-        return client.execute(RxFuncs.save(client, Collections.singletonList(object), client.getBinder()));
+        return client.execute(Funcs.save(client, Collections.singletonList(object)));
     }
 
     @NonNull
@@ -51,16 +50,16 @@ public final class RxSQLite {
         if (objects.isEmpty()) {
             return Observable.empty();
         } else if (objects.size() == 1) {
-            return client.execute(RxFuncs.save(client, objects, client.getBinder()));
+            return client.execute(Funcs.save(client, objects));
         } else {
-            return client.transaction(RxFuncs.save(client, objects, client.getBinder()));
+            return client.transaction(Funcs.save(client, objects));
         }
     }
 
     @NonNull
     public static <T> Observable<Integer> remove(@NonNull T object) {
         final RxSQLiteClient client = requireClientNotNull();
-        return client.execute(RxFuncs.remove(client, Collections.singletonList(object)));
+        return client.execute(Funcs.remove(client, Collections.singletonList(object)));
     }
 
     @NonNull
@@ -69,9 +68,9 @@ public final class RxSQLite {
         if (objects.isEmpty()) {
             return Observable.empty();
         } else if (objects.size() == 1) {
-            return client.execute(RxFuncs.remove(client, objects));
+            return client.execute(Funcs.remove(client, objects));
         } else {
-            return client.transaction(RxFuncs.remove(client, objects));
+            return client.transaction(Funcs.remove(client, objects));
         }
     }
 
@@ -83,8 +82,7 @@ public final class RxSQLite {
     @NonNull
     public static Observable<Integer> clear(@NonNull Class<?> type, @NonNull RxSQLiteWhere where) {
         final RxSQLiteClient client = requireClientNotNull();
-        return client.execute(RxFuncs.clear(client, type, where.toDeleteSql(), where.getBindValues(),
-                client.getBinder()));
+        return client.execute(Funcs.clear(client, type, where.toDeleteSql(), where.getBindValues()));
     }
 
     @NonNull

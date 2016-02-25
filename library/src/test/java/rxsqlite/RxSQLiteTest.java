@@ -43,9 +43,6 @@ public class RxSQLiteTest {
     private SQLiteRowSet mRowSet;
 
     @Mock
-    private RxSQLiteBinder mBinder;
-
-    @Mock
     private RxSQLiteTable mTable;
 
     @Before
@@ -64,7 +61,6 @@ public class RxSQLiteTest {
         Mockito.reset(sClient);
         Mockito.doReturn(mDb).when(sClient).acquireDatabase(Mockito.<Queue>any());
         Mockito.doReturn(mTable).when(sClient).findTable(Object.class);
-        Mockito.doReturn(mBinder).when(sClient).getBinder();
         Mockito.doReturn(mStmt).when(mDb).prepare(Mockito.anyString());
         Mockito.doReturn(mRowSet).when(mStmt).executeSelect();
     }
@@ -72,7 +68,7 @@ public class RxSQLiteTest {
     @Test
     public void testQuery() throws Exception {
         RxSQLite.query(Object.class).toBlocking().subscribe(TestSubscriber.create());
-        Mockito.verify(mTable).query(mDb, ";", Collections.emptyList(), mBinder);
+        Mockito.verify(mTable).query(mDb, ";", Collections.emptyList());
     }
 
     @Test
@@ -81,14 +77,14 @@ public class RxSQLiteTest {
                 .between("age", 18, 25))
                 .toBlocking()
                 .subscribe(TestSubscriber.create());
-        Mockito.verify(mTable).query(mDb, " WHERE age BETWEEN ? AND ?;", Arrays.<Object>asList(18, 25), mBinder);
+        Mockito.verify(mTable).query(mDb, " WHERE age BETWEEN ? AND ?;", Arrays.<Object>asList(18, 25));
     }
 
     @Test
     public void testSave() throws Exception {
         final Object expected = new Object();
         RxSQLite.save(expected).toBlocking().subscribe(TestSubscriber.create());
-        Mockito.verify(mTable).save(mDb, Collections.singletonList(expected), mBinder);
+        Mockito.verify(mTable).save(mDb, Collections.singletonList(expected));
     }
 
     @Test
@@ -147,7 +143,7 @@ public class RxSQLiteTest {
     @Test
     public void testClear() throws Exception {
         RxSQLite.clear(Object.class).toBlocking().subscribe(TestSubscriber.create());
-        Mockito.verify(mTable).clear(mDb, ";", Collections.emptyList(), mBinder);
+        Mockito.verify(mTable).clear(mDb, ";", Collections.emptyList());
     }
 
     @Test
@@ -156,7 +152,7 @@ public class RxSQLiteTest {
                 .between("age", 18, 25))
                 .toBlocking()
                 .subscribe(TestSubscriber.create());
-        Mockito.verify(mTable).clear(mDb, " WHERE age BETWEEN ? AND ?;", Arrays.<Object>asList(18, 25), mBinder);
+        Mockito.verify(mTable).clear(mDb, " WHERE age BETWEEN ? AND ?;", Arrays.<Object>asList(18, 25));
     }
 
     @Test

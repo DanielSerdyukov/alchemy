@@ -10,6 +10,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 
 import sqlite4a.SQLiteRow;
@@ -19,7 +21,7 @@ import sqlite4a.SQLiteStmt;
  * @author Daniel Serdyukov
  */
 @RunWith(MockitoJUnitRunner.class)
-public class RxSQLiteBinderTest {
+public class TypesTest {
 
     @Mock
     private SQLiteStmt mStmt;
@@ -27,11 +29,11 @@ public class RxSQLiteBinderTest {
     @Mock
     private SQLiteRow mRow;
 
-    private RxSQLiteBinder mBinder;
+    private Types mTypes;
 
     @Before
     public void setUp() throws Exception {
-        mBinder = Mockito.spy(new RxSQLiteBinder());
+        mTypes = new Types(Collections.<RxSQLiteType>emptyList());
     }
 
     @Test
@@ -39,11 +41,17 @@ public class RxSQLiteBinderTest {
         final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
         Mockito.doReturn(true).when(type).isAssignable(Date.class);
         Mockito.doReturn("INTEGER").when(type).getType(Date.class);
-        for (int i = 0; i < 5; ++i) {
-            mBinder.registerType(Mockito.mock(RxSQLiteType.class));
-        }
-        mBinder.registerType(type);
-        Assert.assertThat(mBinder.getType(Date.class), Is.is("INTEGER"));
+        final Types types = new Types(Arrays.asList(
+                Mockito.mock(RxSQLiteType.class),
+                Mockito.mock(RxSQLiteType.class),
+                type
+        ));
+        Assert.assertThat(types.getType(Date.class), Is.is("INTEGER"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetUnsupportedType() throws Exception {
+        new Types(Collections.<RxSQLiteType>emptyList()).getType(Date.class);
     }
 
     @Test
@@ -52,66 +60,67 @@ public class RxSQLiteBinderTest {
         final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
         Mockito.doReturn(true).when(type).isAssignable(Date.class);
         Mockito.doReturn(expected).when(type).getValue(mRow, 1);
-        for (int i = 0; i < 5; ++i) {
-            mBinder.registerType(Mockito.mock(RxSQLiteType.class));
-        }
-        mBinder.registerType(type);
-        Assert.assertThat(mBinder.getValue(mRow, 1, Date.class), Is.is(expected));
+        final Types types = new Types(Arrays.asList(
+                Mockito.mock(RxSQLiteType.class),
+                Mockito.mock(RxSQLiteType.class),
+                type
+        ));
+        Assert.assertThat(types.getValue(mRow, 1, Date.class), Is.is(expected));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetUnsupportedValue() throws Exception {
-        mBinder.getValue(mRow, 1, Bar.class);
+        new Types(Collections.<RxSQLiteType>emptyList()).getValue(mRow, 1, Bar.class);
     }
 
     @Test
     public void testGetEnumValue() throws Exception {
         Mockito.doReturn("VALUE").when(mRow).getColumnString(1);
-        Assert.assertThat(mBinder.getEnumValue(mRow, 1, Bar.class), Is.is(Bar.VALUE));
+        Assert.assertThat(mTypes.getEnumValue(mRow, 1, Bar.class), Is.is(Bar.VALUE));
 
         Mockito.doReturn(null).when(mRow).getColumnString(1);
-        Assert.assertThat(mBinder.getEnumValue(mRow, 1, Bar.class), IsNull.nullValue());
+        Assert.assertThat(mTypes.getEnumValue(mRow, 1, Bar.class), IsNull.nullValue());
     }
 
     @Test
     public void testBindNull() throws Exception {
-        mBinder.bindValue(mStmt, 1, null);
+        mTypes.bindValue(mStmt, 1, null);
         Mockito.verify(mStmt).bindNull(1);
     }
 
     @Test
     public void testBindDouble() throws Exception {
-        mBinder.bindValue(mStmt, 2, 1.23);
+        mTypes.bindValue(mStmt, 2, 1.23);
         Mockito.verify(mStmt).bindDouble(2, 1.23);
-        mBinder.bindValue(mStmt, 2, 4.56f);
+        mTypes.bindValue(mStmt, 2, 4.56f);
         Mockito.verify(mStmt).bindDouble(2, 4.56f);
     }
 
     @Test
     public void testBindLong() throws Exception {
-        mBinder.bindValue(mStmt, 3, 100);
+        mTypes.bindValue(mStmt, 3, 100);
         Mockito.verify(mStmt).bindLong(3, 100);
-        mBinder.bindValue(mStmt, 3, 200L);
+        mTypes.bindValue(mStmt, 3, 200L);
         Mockito.verify(mStmt).bindLong(3, 200L);
     }
 
     @Test
     public void testBindBoolean() throws Exception {
-        mBinder.bindValue(mStmt, 4, true);
+        mTypes.bindValue(mStmt, 4, true);
         Mockito.verify(mStmt).bindLong(4, 1);
-        mBinder.bindValue(mStmt, 4, false);
+        mTypes.bindValue(mStmt, 4, false);
         Mockito.verify(mStmt).bindLong(4, 0);
     }
 
     @Test
     public void testBindString() throws Exception {
-        mBinder.bindValue(mStmt, 5, "test");
+        mTypes.bindValue(mStmt, 5, "test");
         Mockito.verify(mStmt).bindString(5, "test");
     }
 
     @Test
     public void testBindBlob() throws Exception {
-        mBinder.bindValue(mStmt, 5, new byte[]{1, 2, 3});
+        mTypes.bindValue(mStmt, 5, new byte[]{1, 2, 3});
     }
 
     @Test
@@ -119,17 +128,19 @@ public class RxSQLiteBinderTest {
         final Date expected = new Date();
         final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
         Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        for (int i = 0; i < 5; ++i) {
-            mBinder.registerType(Mockito.mock(RxSQLiteType.class));
-        }
-        mBinder.registerType(type);
-        mBinder.bindValue(mStmt, 6, expected);
+        Mockito.doReturn(expected).when(type).getValue(mRow, 1);
+        final Types types = new Types(Arrays.asList(
+                Mockito.mock(RxSQLiteType.class),
+                Mockito.mock(RxSQLiteType.class),
+                type
+        ));
+        types.bindValue(mStmt, 6, expected);
         Mockito.verify(type).bindValue(mStmt, 6, expected);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testUnsupportedBindValue() throws Exception {
-        mBinder.bindValue(mStmt, 7, Bar.VALUE);
+        mTypes.bindValue(mStmt, 7, Bar.VALUE);
     }
 
     enum Bar {

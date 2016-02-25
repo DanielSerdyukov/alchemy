@@ -37,7 +37,7 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-v13:23.2.0'
+    compile 'com.android.support:support-annotations:23.2.0'
     compile deps.sqlite4a
     compile deps.rxjava
     testCompile('junit:junit:4.12') {

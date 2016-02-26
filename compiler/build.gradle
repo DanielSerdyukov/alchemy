@@ -16,10 +16,7 @@ dependencies {
     compile 'com.google.auto:auto-common:0.5'
     compile deps.rxjava
     compile files(Jvm.current().toolsJar)
-
-    testCompile(deps.sqlite4a) {
-        exclude group: 'com.android.support'
-    }
+    testCompile(deps.sqlite4a)
     testCompile files('../library/build/intermediates/bundles/release/classes.jar')
     testCompile deps.hamcrest
     testCompile 'com.google.truth:truth:0.28'

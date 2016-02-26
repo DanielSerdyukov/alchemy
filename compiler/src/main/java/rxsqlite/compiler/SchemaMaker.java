@@ -30,9 +30,11 @@ class SchemaMaker {
     static void brewCreateMethod(TypeSpec.Builder typeSpec, Map<Element, String> schema) {
         final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addParameter(ClassName.get("rxsqlite", "RxSQLiteClient"), "client");
+                .addParameter(ClassName.get("rxsqlite", "RxSQLiteClient"), "client")
+                .addParameter(ClassName.get("rxsqlite", "Types"), "types")
+                .addStatement("final $1T customTypes = new $1T(types)", CustomTypesMaker.className());
         for (final Map.Entry<Element, String> entry : schema.entrySet()) {
-            methodSpec.addStatement("client.registerTable($T.class, new $T())",
+            methodSpec.addStatement("client.registerTable($T.class, new $T(customTypes))",
                     ClassName.get(entry.getKey().asType()),
                     ClassName.bestGuess(entry.getValue()));
         }

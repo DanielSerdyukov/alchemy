@@ -64,16 +64,16 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         processSQLiteColumn(roundEnv, classMap);
 
         try {
-            BinderMaker.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
+            CustomTypesMaker.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
         } catch (IOException e) {
-            Logger.error(processingEnv, null, "Unable to write binder class", e.getMessage());
+            Logger.error(processingEnv, null, "Unable to write CustomTypes class", e.getMessage());
         }
 
         for (final Map.Entry<TypeElement, TableMaker> entry : classMap.entrySet()) {
             final TypeElement element = entry.getKey();
             final TableMaker tableClass = entry.getValue();
             try {
-                tableClass.brewHelperJava().writeTo(mFiler);
+                //tableClass.brewHelperJava().writeTo(mFiler);
                 final JavaFile tableJava = tableClass.brewTableJava();
                 tableJava.writeTo(mFiler);
                 schema.put(element, tableJava.packageName + "." + tableJava.typeSpec.name);

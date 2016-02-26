@@ -4,7 +4,7 @@ subprojects { project ->
             jcenter()
         }
         dependencies {
-            classpath 'com.android.tools.build:gradle:2.0.0-beta5'
+            classpath 'com.android.tools.build:gradle:2.0.0-beta6'
             classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.4.0'
             classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
         }
@@ -12,6 +12,7 @@ subprojects { project ->
 
     repositories {
         jcenter()
+        mavenLocal()
     }
 }
 
@@ -23,17 +24,16 @@ ext {
 
 ext.deps = [
         rxjava  : 'io.reactivex:rxjava:1.1.1',
-        sqlite4a: 'sqlite4a:library:1.0.0',
+        sqlite4a: 'sqlite4a:library:1.1.0',
         junit   : 'junit:junit:4.12',
-        hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0',
-        mockito : 'org.mockito:mockito-all:1.10.19'
+        hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0'
 ]
 
 def getGitVersionName() {
-    def tag = 'git describe --tags'.execute().text.split('-').first()?.trim()
+    /*def tag = 'git describe --tags'.execute().text.split('-').first()?.trim()
     if (tag =~ /^v.*$/) {
         return tag.substring(1)
-    }
+    }*/
     return '1.1.0'
 }
 

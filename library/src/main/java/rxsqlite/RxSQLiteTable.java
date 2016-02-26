@@ -8,7 +8,7 @@ import sqlite4a.SQLiteDb;
 /**
  * @author Daniel Serdyukov
  */
-interface RxSQLiteTable<T> {
+public interface RxSQLiteTable<T> {
 
     void create(@NonNull SQLiteDb db);
 

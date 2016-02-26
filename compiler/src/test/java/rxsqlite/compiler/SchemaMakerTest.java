@@ -21,9 +21,11 @@ public class SchemaMakerTest {
                 Arrays.asList(
                         "package rxsqlite;",
                         "import rxsqlite.test.Bar;",
+                        "import rxsqlite.test.Bar$$Table;",
                         "public class SQLite$$Schema {",
-                        "    public static void create(RxSQLiteClient client) {",
-                        "        client.registerTable(Bar.class, new Bar$$Table());",
+                        "    public static void create(RxSQLiteClient client, Types types) {",
+                        "        final CustomTypes customTypes = new CustomTypes(types);",
+                        "        client.registerTable(Bar.class, new Bar$$Table(customTypes));",
                         "    }",
                         "}"
                 ));

@@ -10,6 +10,7 @@ import com.squareup.javapoet.TypeSpec;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -36,7 +37,7 @@ class TableMaker {
 
     static final ClassName RXS_TABLE = ClassName.get(PACKAGE_NAME, "RxSQLiteTable");
 
-    static final ClassName RXS_BINDER = ClassName.get(PACKAGE_NAME, "RxSQLiteBinder");
+    static final ClassName RXS_TYPES = ClassName.get(PACKAGE_NAME, "Types");
 
     static final ClassName SQLITE_DB = ClassName.get("sqlite4a", "SQLiteDb");
 
@@ -112,14 +113,10 @@ class TableMaker {
         } else if (Utils.isEnumType(type)) {
             mDefinitions.add("\", " + columnName + " TEXT" + constraint + "\"");
         } else {
-            mDefinitions.add("\", " + columnName + " \" + binder.getType(" + type + ".class) + \"" + constraint + "\"");
+            mDefinitions.add("\", " + columnName + " \" + mTypes.getType(" + type + ".class) + \"" + constraint + "\"");
         }
         mColumnTypes.put(element.getSimpleName().toString(), type);
         mColumnNames.put(columnName, fieldName);
-    }
-
-    JavaFile brewHelperJava() throws Exception {
-        return HelperMaker.brewJava(mModelClass, mColumnTypes, mColumnNames);
     }
 
     JavaFile brewTableJava() throws Exception {
@@ -130,13 +127,22 @@ class TableMaker {
             throw new IllegalArgumentException("has no field annotated with @" + SQLitePk.class.getCanonicalName());
         }
         final TypeSpec.Builder spec = TypeSpec.classBuilder(mModelClass.simpleName() + "$$Table")
-                .addSuperinterface(ParameterizedTypeName.get(RXS_TABLE, mModelClass));
+                .addModifiers(Modifier.PUBLIC)
+                .addSuperinterface(ParameterizedTypeName.get(RXS_TABLE, mModelClass))
+                .addField(CustomTypesMaker.className(), "mTypes", Modifier.PRIVATE, Modifier.FINAL)
+                .addMethod(MethodSpec.constructorBuilder()
+                        .addModifiers(Modifier.PUBLIC)
+                        .addParameter(CustomTypesMaker.className(), "types")
+                        .addStatement("mTypes = types")
+                        .build());
         brewCreateMethod(spec);
         brewQueryMethod(spec);
         brewSaveMethod(spec);
         brewRemoveMethod(spec);
         brewClearMethod(spec);
-        return JavaFile.builder(PACKAGE_NAME, spec.build())
+        brewInstantiateMethod(spec);
+        brewBindValuesMethod(spec);
+        return JavaFile.builder(mModelClass.packageName(), spec.build())
                 .addFileComment("Generated code from RxSQLite. Do not modify!")
                 .skipJavaLangImports(true)
                 .build();
@@ -158,7 +164,6 @@ class TableMaker {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(SQLITE_DB, "db")
-                .addParameter(RXS_BINDER, "binder")
                 .addCode(query.build())
                 .build());
     }
@@ -171,7 +176,6 @@ class TableMaker {
                 .addParameter(String.class, "selection")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class),
                         ClassName.get(Object.class)), "bindValues")
-                .addParameter(RXS_BINDER, "binder")
                 .returns(ParameterizedTypeName.get(OBSERVABLE, mModelClass))
                 .addStatement("final $T stmt = db.prepare(\"SELECT * FROM $L\" + selection)", SQLITE_STMT, mTableName)
                 .beginControlFlow("try")
@@ -179,13 +183,11 @@ class TableMaker {
                         .get(ClassName.get(List.class), mModelClass), ClassName.get(ArrayList.class))
                 .addStatement("int index = 0")
                 .beginControlFlow("for (final Object value : bindValues)")
-                .addStatement("binder.bindValue(stmt, ++index, value)")
+                .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
-                .addStatement("final $1T binderWrapper = new $1T(binder)", BinderMaker.className())
                 .addStatement("final $T rows = stmt.executeSelect()", SQLITE_ROW_SET)
                 .beginControlFlow("while (rows.step())")
-                .addStatement("objects.add($T.create(rows, binderWrapper))",
-                        HelperMaker.className(mModelClass))
+                .addStatement("objects.add(instantiate(rows))")
                 .endControlFlow()
                 .addStatement("return $T.from(objects)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -202,17 +204,15 @@ class TableMaker {
                 .addAnnotation(Override.class)
                 .addParameter(SQLITE_DB, "db")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class), mModelClass), "objects")
-                .addParameter(RXS_BINDER, "binder")
                 .returns(ParameterizedTypeName.get(OBSERVABLE, mModelClass))
                 .addStatement("final $T stmt = db.prepare(\"INSERT INTO $L($L) VALUES($L);\")",
                         SQLITE_STMT, mTableName, Utils.join(", ", columns), Utils.join(", ", binding))
                 .beginControlFlow("try")
-                .addStatement("final $1T binderWrapper = new $1T(binder)", BinderMaker.className())
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
-                .addStatement("$T.bind(stmt, object, binderWrapper)", HelperMaker.className(mModelClass))
+                .addStatement("bindStmtValues(stmt, object)")
                 .addStatement("stmt.execute()")
-                .addStatement("$T.setPrimaryKey(object, db.getLastInsertRowId())", HelperMaker.className(mModelClass))
+                .addStatement("object.$L = db.getLastInsertRowId()", mColumnNames.values().iterator().next())
                 .endControlFlow()
                 .addStatement("return $T.from(objects)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -234,7 +234,7 @@ class TableMaker {
                 .addStatement("int affectedRows = 0")
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
-                .addStatement("$T.bindPrimaryKey(stmt, object)", HelperMaker.className(mModelClass))
+                .addStatement("stmt.bindLong(1, object.$L)", mColumnNames.values().iterator().next())
                 .addStatement("affectedRows += stmt.execute()")
                 .endControlFlow()
                 .addStatement("return $T.just(affectedRows)", OBSERVABLE)
@@ -252,19 +252,89 @@ class TableMaker {
                 .addParameter(String.class, "selection")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class),
                         ClassName.get(Object.class)), "bindValues")
-                .addParameter(RXS_BINDER, "binder")
                 .returns(ParameterizedTypeName.get(OBSERVABLE, ClassName.get(Integer.class)))
                 .addStatement("final $T stmt = db.prepare(\"DELETE FROM $L\" + selection)", SQLITE_STMT, mTableName)
                 .beginControlFlow("try")
                 .addStatement("int index = 0")
                 .beginControlFlow("for (final Object value : bindValues)")
-                .addStatement("binder.bindValue(stmt, ++index, value)")
+                .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
                 .addStatement("return $T.just(stmt.execute())", OBSERVABLE)
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
                 .endControlFlow()
                 .build());
+    }
+
+    private void brewInstantiateMethod(TypeSpec.Builder typeSpec) throws Exception {
+        final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("instantiate")
+                .addModifiers(Modifier.PRIVATE)
+                .addParameter(TableMaker.SQLITE_ROW, "row")
+                .returns(mModelClass);
+        methodSpec.addStatement("final $1T object = new $1T()", mModelClass);
+        int index = 0;
+        for (final Map.Entry<String, TypeMirror> entry : mColumnTypes.entrySet()) {
+            final String fieldName = entry.getKey();
+            final TypeMirror type = entry.getValue();
+            if (Utils.isLongType(type)) {
+                methodSpec.addStatement("object.$L = ($L) row.getColumnLong($L)", fieldName, type, index);
+            } else if (Utils.isDoubleType(type)) {
+                methodSpec.addStatement("object.$L = ($L) row.getColumnDouble($L)", fieldName, type, index);
+            } else if (Utils.isStringType(type)) {
+                methodSpec.addStatement("object.$L = row.getColumnString($L)", fieldName, index);
+            } else if (Utils.isBlobType(type)) {
+                methodSpec.addStatement("object.$L = row.getColumnBlob($L)", fieldName, index);
+            } else if (Utils.isEnumType(type)) {
+                methodSpec.addStatement("object.$L = mTypes.getEnumValue(row, $L, $L.class)", fieldName, index, type);
+            } else {
+                methodSpec.addStatement("object.$L = mTypes.getValue(row, $L, $L.class)", fieldName, index, type);
+            }
+            ++index;
+        }
+        methodSpec.addStatement("return object");
+        typeSpec.addMethod(methodSpec.build());
+    }
+
+    private void brewBindValuesMethod(TypeSpec.Builder typeSpec) throws Exception {
+        final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("bindStmtValues")
+                .addModifiers(Modifier.PRIVATE)
+                .addParameter(SQLITE_STMT, "stmt")
+                .addParameter(mModelClass, "object");
+        final Iterator<Map.Entry<String, String>> iterator = mColumnNames.entrySet().iterator();
+        int index = 1;
+        if (iterator.hasNext()) {
+            final Map.Entry<String, String> primaryKey = iterator.next();
+            final String primaryKeyField = primaryKey.getValue();
+            methodSpec.beginControlFlow("if (object.$L > 0)", primaryKeyField);
+            methodSpec.addStatement("stmt.bindLong($L, object.$L)", index, primaryKeyField);
+            methodSpec.nextControlFlow("else");
+            methodSpec.addStatement("stmt.bindNull($L)", index);
+            methodSpec.endControlFlow();
+        }
+        while (iterator.hasNext()) {
+            ++index;
+            final Map.Entry<String, String> column = iterator.next();
+            final String fieldName = column.getValue();
+            final TypeMirror type = mColumnTypes.get(fieldName);
+            if (Utils.isLongType(type)) {
+                methodSpec.addStatement("stmt.bindLong($L, object.$L)", index, fieldName);
+            } else if (Utils.isDoubleType(type)) {
+                methodSpec.addStatement("stmt.bindDouble($L, object.$L)", index, fieldName);
+            } else if (Utils.isStringType(type)) {
+                methodSpec.addStatement("stmt.bindString($L, object.$L)", index, fieldName);
+            } else if (Utils.isBlobType(type)) {
+                methodSpec.addStatement("stmt.bindBlob($L, object.$L)", index, fieldName);
+            } else if (Utils.isEnumType(type)) {
+                methodSpec.beginControlFlow("if (object.$L != null)", fieldName);
+                methodSpec.addStatement("stmt.bindString($L, object.$L.name())", index, fieldName);
+                methodSpec.nextControlFlow("else");
+                methodSpec.addStatement("stmt.bindNull($L)", index);
+                methodSpec.endControlFlow();
+            } else {
+                methodSpec.addStatement("mTypes.bindValue(stmt, $L, object.$L)", index, fieldName);
+            }
+        }
+        typeSpec.addMethod(methodSpec.build());
     }
 
 }

@@ -13,28 +13,31 @@ import javax.tools.JavaFileObject;
 /**
  * @author Daniel Serdyukov
  */
-public class BinderMakerTest {
+public class CustomTypesMakerTest {
 
     @Test
     public void testGeneratedSource() throws Exception {
-        final JavaFileObject generated = JavaFileObjects.forSourceLines("rxsqlite.RxSQLiteBinderWrapper",
+        final JavaFileObject generated = JavaFileObjects.forSourceLines("rxsqlite.CustomTypes",
                 Arrays.asList(
                         "package rxsqlite;",
                         "import sqlite4a.SQLiteRow;",
                         "import sqlite4a.SQLiteStmt;",
-                        "public class RxSQLiteBinderWrapper {",
-                        "  private final RxSQLiteBinder mBinder;",
-                        "  RxSQLiteBinderWrapper(RxSQLiteBinder binder) {",
-                        "    mBinder = binder;",
+                        "public class CustomTypes {",
+                        "  private final Types mTypes;",
+                        "  CustomTypes(Types types) {",
+                        "    mTypes = types;",
+                        "  }",
+                        "  public String getType(Class type) {",
+                        "    return mTypes.getType(type);",
                         "  }",
                         "  public void bindValue(SQLiteStmt stmt, int index, Object object) {",
-                        "    mBinder.bindValue(stmt, index, object);",
+                        "    mTypes.bindValue(stmt, index, object);",
                         "  }",
                         "  public <T> T getValue(SQLiteRow row, int index, Class<T> type) {",
-                        "    return mBinder.getValue(row, index, type);",
+                        "    return mTypes.getValue(row, index, type);",
                         "  }",
                         "  public <T extends Enum<T>> T getEnumValue(SQLiteRow row, int index, Class<T> type) {",
-                        "    return mBinder.getEnumValue(row, index, type);",
+                        "    return mTypes.getEnumValue(row, index, type);",
                         "  }",
                         "}"
                 ));

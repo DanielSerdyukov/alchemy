@@ -13,9 +13,9 @@ import javax.lang.model.element.Modifier;
 /**
  * @author Daniel Serdyukov
  */
-class BinderMaker {
+class CustomTypesMaker {
 
-    private static final String CLASS_NAME = "RxSQLiteBinderWrapper";
+    private static final String CLASS_NAME = "CustomTypes";
 
     private static final TypeVariableName T_VAR = TypeVariableName.get("T");
 
@@ -26,11 +26,12 @@ class BinderMaker {
     static JavaFile brewJava() {
         final TypeSpec.Builder spec = TypeSpec.classBuilder(CLASS_NAME)
                 .addModifiers(Modifier.PUBLIC)
-                .addField(TableMaker.RXS_BINDER, "mBinder", Modifier.PRIVATE, Modifier.FINAL)
+                .addField(TableMaker.RXS_TYPES, "mTypes", Modifier.PRIVATE, Modifier.FINAL)
                 .addMethod(MethodSpec.constructorBuilder()
-                        .addParameter(TableMaker.RXS_BINDER, "binder")
-                        .addStatement("mBinder = binder")
+                        .addParameter(TableMaker.RXS_TYPES, "types")
+                        .addStatement("mTypes = types")
                         .build());
+        brewGetTypeMethod(spec);
         brewBindValueMethod(spec);
         brewGetValueMethod(spec);
         brewGetEnumValueMethod(spec);
@@ -40,13 +41,22 @@ class BinderMaker {
                 .build();
     }
 
+    private static void brewGetTypeMethod(TypeSpec.Builder typeSpec) {
+        typeSpec.addMethod(MethodSpec.methodBuilder("getType")
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ClassName.get(Class.class), "type")
+                .returns(String.class)
+                .addStatement("return mTypes.getType(type)")
+                .build());
+    }
+
     private static void brewBindValueMethod(TypeSpec.Builder typeSpec) {
         typeSpec.addMethod(MethodSpec.methodBuilder("bindValue")
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(TableMaker.SQLITE_STMT, "stmt")
                 .addParameter(TypeName.INT, "index")
                 .addParameter(ClassName.get(Object.class), "object")
-                .addStatement("mBinder.bindValue(stmt, index, object)")
+                .addStatement("mTypes.bindValue(stmt, index, object)")
                 .build());
     }
 
@@ -58,7 +68,7 @@ class BinderMaker {
                 .addParameter(TypeName.INT, "index")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), T_VAR), "type")
                 .returns(T_VAR)
-                .addStatement("return mBinder.getValue(row, index, type)")
+                .addStatement("return mTypes.getValue(row, index, type)")
                 .build());
     }
 
@@ -71,7 +81,7 @@ class BinderMaker {
                 .addParameter(TypeName.INT, "index")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), T_VAR), "type")
                 .returns(T_VAR)
-                .addStatement("return mBinder.getEnumValue(row, index, type)")
+                .addStatement("return mTypes.getEnumValue(row, index, type)")
                 .build());
     }
 

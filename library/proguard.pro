@@ -10,8 +10,7 @@
     native <methods>;
 }
 
--keep interface rxsqlite.RxSQLiteTable { *; }
--keep class rxsqlite.RxSQLiteBinder { *; }
 -keep class rxsqlite.RxSQLiteClient {
     void registerTable(java.lang.Class, rxsqlite.RxSQLiteTable);
 }
+-keep class rxsqlite.Types { *; }

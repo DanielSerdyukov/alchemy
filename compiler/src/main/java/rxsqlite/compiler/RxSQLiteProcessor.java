@@ -73,7 +73,6 @@ public class RxSQLiteProcessor extends AbstractProcessor {
             final TypeElement element = entry.getKey();
             final TableMaker tableClass = entry.getValue();
             try {
-                //tableClass.brewHelperJava().writeTo(mFiler);
                 final JavaFile tableJava = tableClass.brewTableJava();
                 tableJava.writeTo(mFiler);
                 schema.put(element, tableJava.packageName + "." + tableJava.typeSpec.name);

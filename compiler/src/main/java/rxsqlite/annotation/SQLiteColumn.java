@@ -16,4 +16,8 @@ public @interface SQLiteColumn {
 
     String constraint() default "";
 
+    boolean index() default false;
+
+    boolean unique() default false;
+
 }

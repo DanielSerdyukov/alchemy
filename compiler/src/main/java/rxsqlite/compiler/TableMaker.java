@@ -57,6 +57,8 @@ class TableMaker {
 
     private final Map<String, String> mColumnNames = new LinkedHashMap<>();
 
+    private final List<String> mIndices = new ArrayList<>();
+
     private String mTableName;
 
     private boolean mHasPrimaryKey;
@@ -102,21 +104,11 @@ class TableMaker {
         if (!Utils.isEmpty(constraint)) {
             constraint = " " + constraint;
         }
-        if (Utils.isLongType(type)) {
-            mDefinitions.add("\", " + columnName + " INTEGER" + constraint + "\"");
-        } else if (Utils.isDoubleType(type)) {
-            mDefinitions.add("\", " + columnName + " REAL" + constraint + "\"");
-        } else if (Utils.isStringType(type)) {
-            mDefinitions.add("\", " + columnName + " TEXT" + constraint + "\"");
-        } else if (Utils.isBlobType(type)) {
-            mDefinitions.add("\", " + columnName + " BLOB" + constraint + "\"");
-        } else if (Utils.isEnumType(type)) {
-            mDefinitions.add("\", " + columnName + " TEXT" + constraint + "\"");
-        } else {
-            mDefinitions.add("\", " + columnName + " \" + mTypes.getType(" + type + ".class) + \"" + constraint + "\"");
+        addColumnDefinition(fieldName, columnName, constraint, type);
+
+        if (annotation.index()) {
+            addIndexDefinition(columnName, annotation.unique());
         }
-        mColumnTypes.put(element.getSimpleName().toString(), type);
-        mColumnNames.put(columnName, fieldName);
     }
 
     JavaFile brewTableJava() throws Exception {
@@ -148,7 +140,48 @@ class TableMaker {
                 .build();
     }
 
+    private void addColumnDefinition(String fieldName, String columnName, String constraint, TypeMirror type) {
+        if (Utils.isLongType(type)) {
+            mDefinitions.add("\", " + columnName + " INTEGER" + constraint + "\"");
+        } else if (Utils.isDoubleType(type)) {
+            mDefinitions.add("\", " + columnName + " REAL" + constraint + "\"");
+        } else if (Utils.isStringType(type)) {
+            mDefinitions.add("\", " + columnName + " TEXT" + constraint + "\"");
+        } else if (Utils.isBlobType(type)) {
+            mDefinitions.add("\", " + columnName + " BLOB" + constraint + "\"");
+        } else if (Utils.isEnumType(type)) {
+            mDefinitions.add("\", " + columnName + " TEXT" + constraint + "\"");
+        } else {
+            mDefinitions.add("\", " + columnName + " \" + mTypes.getType("
+                    + type + ".class) + \"" + constraint + "\"");
+        }
+        mColumnTypes.put(fieldName, type);
+        mColumnNames.put(columnName, fieldName);
+    }
+
+    private void addIndexDefinition(String columnName, boolean unique) {
+        final StringBuilder index = new StringBuilder(128);
+        index.append("CREATE ");
+        if (unique) {
+            index.append("UNIQUE ");
+        }
+        index.append("INDEX IF NOT EXISTS ");
+        index.append(mTableName);
+        index.append("_idx");
+        index.append(mIndices.size());
+        index.append(" ON ");
+        index.append(mTableName);
+        index.append("(");
+        index.append(columnName);
+        index.append(");");
+        mIndices.add(index.toString());
+    }
+
     private void brewCreateMethod(TypeSpec.Builder typeSpec) throws Exception {
+        final MethodSpec.Builder builder = MethodSpec.methodBuilder("create")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .addParameter(SQLITE_DB, "db");
         final String constraints = mDefinitions.removeFirst();
         if (!"\", \"".equals(constraints)) {
             mDefinitions.addLast(constraints);
@@ -160,12 +193,10 @@ class TableMaker {
             query.add("\n + $L", definition);
         }
         query.add("\n + \");\", null);\n");
-        typeSpec.addMethod(MethodSpec.methodBuilder("create")
-                .addModifiers(Modifier.PUBLIC)
-                .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db")
-                .addCode(query.build())
-                .build());
+        for (final String index : mIndices) {
+            query.addStatement("db.exec($S, null)", index);
+        }
+        typeSpec.addMethod(builder.addCode(query.build()).build());
     }
 
     private void brewQueryMethod(TypeSpec.Builder typeSpec) throws Exception {

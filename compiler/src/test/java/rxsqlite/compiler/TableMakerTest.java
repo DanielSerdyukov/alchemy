@@ -48,6 +48,8 @@ public class TableMakerTest {
                 "      + \", enum_type TEXT\"",
                 "      + \", UNIQUE(int, short)\"",
                 "      + \");\", null);",
+                "    db.exec(\"CREATE INDEX IF NOT EXISTS foo_idx0 ON foo(int);\", null);",
+                "    db.exec(\"CREATE UNIQUE INDEX IF NOT EXISTS foo_idx1 ON foo(short);\", null);",
                 "  }",
                 "  @Override",
                 "  public Observable<Foo> query(SQLiteDb db, String selection, Iterable<Object> bindValues) {",

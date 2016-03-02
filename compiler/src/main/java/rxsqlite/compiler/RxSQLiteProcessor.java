@@ -5,6 +5,9 @@ import com.google.auto.service.AutoService;
 import com.squareup.javapoet.JavaFile;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.annotation.Annotation;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -18,6 +21,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
@@ -66,7 +70,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         try {
             CustomTypesMaker.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
         } catch (IOException e) {
-            Logger.error(processingEnv, null, "Unable to write CustomTypes class", e.getMessage());
+            error(null, "Unable to write CustomTypes class", e.getMessage());
         }
 
         for (final Map.Entry<TypeElement, TableMaker> entry : classMap.entrySet()) {
@@ -77,15 +81,14 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                 tableJava.writeTo(mFiler);
                 schema.put(element, tableJava.packageName + "." + tableJava.typeSpec.name);
             } catch (Exception e) {
-                Logger.error(processingEnv, element, "Unable to write table class for type %s: %s",
-                        element, e.getMessage());
+                error(element, "Unable to write table class for type %s: %s", element, e.getMessage());
             }
         }
 
         try {
             SchemaMaker.brewJava(schema).writeTo(mFiler);
         } catch (IOException e) {
-            Logger.error(processingEnv, null, "Unable to write schema class", e.getMessage());
+            error(null, "Unable to write schema class", e.getMessage());
         }
 
         return true;
@@ -100,7 +103,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                 getOrCreateTableClass((TypeElement) element, classMap)
                         .parseSQLiteObject(element);
             } catch (Exception e) {
-                Logger.parsingError(processingEnv, element, SQLiteObject.class, e);
+                parsingError(element, SQLiteObject.class, e);
             }
         }
     }
@@ -114,7 +117,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                 getOrCreateTableClass((TypeElement) element.getEnclosingElement(), classMap)
                         .parseSQLitePk(element);
             } catch (Exception e) {
-                Logger.parsingError(processingEnv, element, SQLitePk.class, e);
+                parsingError(element, SQLitePk.class, e);
             }
         }
     }
@@ -128,7 +131,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                 getOrCreateTableClass((TypeElement) element.getEnclosingElement(), classMap)
                         .parseSQLiteColumn(element);
             } catch (Exception e) {
-                Logger.parsingError(processingEnv, element, SQLiteColumn.class, e);
+                parsingError(element, SQLiteColumn.class, e);
             }
         }
     }
@@ -140,6 +143,23 @@ public class RxSQLiteProcessor extends AbstractProcessor {
             classMap.put(element, tableClass);
         }
         return tableClass;
+    }
+
+    private void error(Element element, String message, Object... args) {
+        if (args.length > 0) {
+            message = String.format(message, args);
+        }
+        if (element != null) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, element);
+        } else {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+        }
+    }
+
+    private void parsingError(Element element, Class<? extends Annotation> annotation, Exception e) {
+        StringWriter stackTrace = new StringWriter();
+        e.printStackTrace(new PrintWriter(stackTrace));
+        error(element, "Unable to parse @%s.\n\n%s", annotation.getSimpleName(), stackTrace);
     }
 
 }

@@ -3,7 +3,7 @@ before_script:
 
 tests:
   script:
-    - gradle testDebugUnitTest
+    - gradle clean testDebugUnitTest
   tags:
     - android
   only:
@@ -11,7 +11,7 @@ tests:
 
 bintray_deploy:
   script:
-    - gradle :library:assembleRelease :compiler:assemble :compiler:proguard publishToMavenLocal bintrayUpload
+    - gradle clean :library:assembleRelease :compiler:assemble :compiler:proguard publishToMavenLocal bintrayUpload
   tags:
     - android
   only:

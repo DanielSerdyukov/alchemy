@@ -27,6 +27,8 @@ public class Models {
             "  private short mShort;",
             "  @SQLiteColumn",
             "  private double mDouble;",
+            "  @SQLiteColumn",
+            "  private boolean mBool;",
             "  @SQLiteColumn(\"my_float\")",
             "  private float mFloat;",
             "  @SQLiteColumn",

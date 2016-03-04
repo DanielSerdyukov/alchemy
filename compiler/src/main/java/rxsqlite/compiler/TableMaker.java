@@ -141,7 +141,7 @@ class TableMaker {
     }
 
     private void addColumnDefinition(String fieldName, String columnName, String constraint, TypeMirror type) {
-        if (Utils.isLongType(type)) {
+        if (Utils.isLongType(type) || Utils.isBooleanType(type)) {
             mDefinitions.add("\", " + columnName + " INTEGER" + constraint + "\"");
         } else if (Utils.isDoubleType(type)) {
             mDefinitions.add("\", " + columnName + " REAL" + constraint + "\"");
@@ -192,9 +192,9 @@ class TableMaker {
         for (final String definition : mDefinitions) {
             query.add("\n + $L", definition);
         }
-        query.add("\n + \");\", null);\n");
+        query.add("\n + \");\");\n");
         for (final String index : mIndices) {
-            query.addStatement("db.exec($S, null)", index);
+            query.addStatement("db.exec($S)", index);
         }
         typeSpec.addMethod(builder.addCode(query.build()).build());
     }
@@ -311,6 +311,8 @@ class TableMaker {
                 methodSpec.addStatement("object.$L = ($L) row.getColumnLong($L)", fieldName, type, index);
             } else if (Utils.isDoubleType(type)) {
                 methodSpec.addStatement("object.$L = ($L) row.getColumnDouble($L)", fieldName, type, index);
+            } else if (Utils.isBooleanType(type)) {
+                methodSpec.addStatement("object.$L = row.getColumnLong($L) > 0", fieldName, index);
             } else if (Utils.isStringType(type)) {
                 methodSpec.addStatement("object.$L = row.getColumnString($L)", fieldName, index);
             } else if (Utils.isBlobType(type)) {
@@ -351,6 +353,8 @@ class TableMaker {
                 methodSpec.addStatement("stmt.bindLong($L, object.$L)", index, fieldName);
             } else if (Utils.isDoubleType(type)) {
                 methodSpec.addStatement("stmt.bindDouble($L, object.$L)", index, fieldName);
+            } else if (Utils.isBooleanType(type)) {
+                methodSpec.addStatement("stmt.bindLong($L, object.$L ? 1 : 0)", index, fieldName);
             } else if (Utils.isStringType(type)) {
                 methodSpec.addStatement("stmt.bindString($L, object.$L)", index, fieldName);
             } else if (Utils.isBlobType(type)) {

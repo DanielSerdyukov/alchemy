@@ -96,7 +96,7 @@ public class RxSQLiteClientTest {
     @Test
     public void testSetDatabaseVersion() throws Exception {
         mClient.setDatabaseVersion(mDb, 2);
-        Mockito.verify(mDb).exec("PRAGMA user_version = 2;", null);
+        Mockito.verify(mDb).exec("PRAGMA user_version = 2;");
     }
 
     @Test
@@ -146,9 +146,9 @@ public class RxSQLiteClientTest {
         subscriber.assertValue(345);
         subscriber.assertCompleted();
         Mockito.verify(mClient).acquireDatabase(Mockito.<Queue>any());
-        Mockito.verify(mDb).exec("BEGIN;", null);
+        Mockito.verify(mDb).exec("BEGIN;");
         Mockito.verify(func).call(mDb);
-        Mockito.verify(mDb).exec("COMMIT;", null);
+        Mockito.verify(mDb).exec("COMMIT;");
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }
 
@@ -160,9 +160,9 @@ public class RxSQLiteClientTest {
         mClient.transaction(func).toBlocking().subscribe(subscriber);
         subscriber.assertError(SQLiteException.class);
         Mockito.verify(mClient).acquireDatabase(Mockito.<Queue>any());
-        Mockito.verify(mDb).exec("BEGIN;", null);
+        Mockito.verify(mDb).exec("BEGIN;");
         Mockito.verify(func).call(mDb);
-        Mockito.verify(mDb).exec("ROLLBACK;", null);
+        Mockito.verify(mDb).exec("ROLLBACK;");
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }
 

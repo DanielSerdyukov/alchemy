@@ -89,6 +89,10 @@ class Utils {
                 || TypeKind.FLOAT == type.getKind();
     }
 
+    static boolean isBooleanType(TypeMirror type) {
+        return TypeKind.BOOLEAN == type.getKind();
+    }
+
     static boolean isStringType(TypeMirror type) {
         return TypeKind.DECLARED == type.getKind() && "java.lang.String".equals(type.toString());
     }

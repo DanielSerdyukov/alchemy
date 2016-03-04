@@ -1,6 +1,12 @@
 Change Log
 ==========
 
+RxSQLite 2.0.0 *(2016-03-04)*
+----------------------------
+
+SQLite4a updated to v2.0.0
+```boolean``` type support
+
 RxSQLite 1.1.0 *(2016-03-02)*
 ----------------------------
 

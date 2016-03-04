@@ -154,12 +154,12 @@ public class RxSQLiteClient implements Closeable {
             public Observable<T> call() {
                 final SQLiteDb db = acquireDatabase(mConnections);
                 try {
-                    db.exec("BEGIN;", null);
+                    db.exec("BEGIN;");
                     final Observable<T> observable = factory.call(db);
-                    db.exec("COMMIT;", null);
+                    db.exec("COMMIT;");
                     return observable;
                 } catch (Throwable e) {
-                    db.exec("ROLLBACK;", null);
+                    db.exec("ROLLBACK;");
                     return Observable.error(e);
                 } finally {
                     releaseDatabase(mConnections, db);
@@ -220,7 +220,7 @@ public class RxSQLiteClient implements Closeable {
 
     @VisibleForTesting
     void setDatabaseVersion(@NonNull SQLiteDb db, int version) {
-        db.exec("PRAGMA user_version = " + version + ";", null);
+        db.exec("PRAGMA user_version = " + version + ";");
     }
 
     @NonNull

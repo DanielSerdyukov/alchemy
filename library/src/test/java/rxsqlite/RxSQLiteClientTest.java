@@ -27,10 +27,9 @@ import rx.functions.Action1;
 import rx.functions.Action3;
 import rx.functions.Func1;
 import rx.observers.TestSubscriber;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
 import sqlite4a.SQLiteException;
-import sqlite4a.SQLiteRow;
-import sqlite4a.SQLiteRowSet;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -48,7 +47,7 @@ public class RxSQLiteClientTest {
     private SQLiteStmt mStmt;
 
     @Mock
-    private SQLiteRowSet mRowSet;
+    private SQLiteCursor mCursor;
 
     @Mock
     private Action1<SQLiteDb> mOnOpen;
@@ -80,14 +79,14 @@ public class RxSQLiteClientTest {
         Mockito.doReturn(0).when(mClient).getDatabaseVersion(mDb);
         Mockito.doReturn(mDb).when(mClient).openDatabase(Mockito.anyString(), Mockito.anyInt());
         Mockito.doReturn(mStmt).when(mDb).prepare(Mockito.anyString());
-        Mockito.doReturn(mRowSet).when(mStmt).executeSelect();
+        Mockito.doReturn(mCursor).when(mStmt).executeQuery();
     }
 
     @Test
     public void testGetDatabaseVersion() throws Exception {
         Mockito.doCallRealMethod().when(mClient).getDatabaseVersion(mDb);
-        Mockito.doAnswer(Answers.stmtStep(1)).when(mRowSet).step();
-        Mockito.doReturn(1L).when(mRowSet).getColumnLong(0);
+        Mockito.doAnswer(Answers.stmtStep(1)).when(mCursor).step();
+        Mockito.doReturn(1L).when(mCursor).getColumnLong(0);
         Assert.assertThat(mClient.getDatabaseVersion(mDb), Is.is(1));
         Mockito.verify(mDb).prepare("PRAGMA user_version;");
         Mockito.verify(mStmt).close();
@@ -101,7 +100,7 @@ public class RxSQLiteClientTest {
 
     @Test
     public void testQuery() throws Exception {
-        Mockito.doAnswer(Answers.stmtStep(3)).when(mRowSet).step();
+        Mockito.doAnswer(Answers.stmtStep(3)).when(mCursor).step();
         final TestSubscriber<String> subscriber = TestSubscriber.create();
         final List<Object> objects = Arrays.<Object>asList(100L, "Joe");
         final Func1 factory = Mockito.mock(Func1.class);
@@ -115,7 +114,7 @@ public class RxSQLiteClientTest {
         Mockito.verify(mDb).prepare("SELECT * FROM foo WHERE id = ? AND name = ?");
         Mockito.verify(mTypes).bindValue(mStmt, 1, 100L);
         Mockito.verify(mTypes).bindValue(mStmt, 2, "Joe");
-        Mockito.verify(factory, Mockito.times(3)).call(Mockito.any(SQLiteRow.class));
+        Mockito.verify(factory, Mockito.times(3)).call(Mockito.any(SQLiteCursor.class));
         Mockito.verify(mStmt).close();
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }

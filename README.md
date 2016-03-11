@@ -6,8 +6,8 @@ Reactive SQLite extension for Android
 
 ### Gradle
 ```groovy
-compile 'rxsqlite:library:2.0.0'
-provided 'rxsqlite:compiler:2.0.0'
+compile 'rxsqlite:library:3.0.0'
+provided 'rxsqlite:compiler:3.0.0'
 ```
 
 ### Configuration
@@ -22,10 +22,9 @@ static {
 public void onCreate() {
     super.onCreate();
     RxSQLite.register(RxSQLiteClient.builder(this, 1)
-        .doOnOpen(db -> db.exec("PRAGMA case_sensitive_like = true;", null))
-        .doOnOpen(db -> db.profile((sql, execTimeMs)
-                -> Log.e("SQLite", sql + " in " + execTimeMs)))
+        .doOnOpen(db -> db.exec("PRAGMA case_sensitive_like = true;"))
         .doOnCreate(db -> db.exec("CREATE TRIGGER...", null))
+        .enableTracing() // debug logs in logcat
         .build());
 }
 ```
@@ -112,6 +111,7 @@ public class User {
 Supported of field types:
 * ```long```, ```int```, ```short``` as **INTEGER**
 * ```double```, ```float``` as **REAL**
+* ```boolean``` as **INTEGER**
 * ```byte[]``` as **BLOB**
 * ```String``` as **TEXT**
 * ```Enum<T>``` as **TEXT**

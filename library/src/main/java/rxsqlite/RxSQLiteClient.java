@@ -25,9 +25,8 @@ import rx.functions.Action1;
 import rx.functions.Action3;
 import rx.functions.Func0;
 import rx.functions.Func1;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
-import sqlite4a.SQLiteRow;
-import sqlite4a.SQLiteRowSet;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -105,7 +104,7 @@ public class RxSQLiteClient implements Closeable {
 
     @NonNull
     public <T> Observable<T> query(@NonNull final String sql, @NonNull final Iterable<Object> bindValues,
-            @NonNull final Func1<SQLiteRow, T> factory) {
+                                   @NonNull final Func1<SQLiteCursor, T> factory) {
         return Observable.create(new Observable.OnSubscribe<T>() {
             @Override
             public void call(Subscriber<? super T> subscriber) {
@@ -117,7 +116,7 @@ public class RxSQLiteClient implements Closeable {
                         for (final Object value : bindValues) {
                             mTypes.bindValue(stmt, ++index, value);
                         }
-                        final SQLiteRowSet rows = stmt.executeSelect();
+                        final SQLiteCursor rows = stmt.executeQuery();
                         while (rows.step()) {
                             subscriber.onNext(factory.call(rows));
                         }
@@ -208,7 +207,7 @@ public class RxSQLiteClient implements Closeable {
     int getDatabaseVersion(@NonNull SQLiteDb db) {
         final SQLiteStmt stmt = db.prepare("PRAGMA user_version;");
         try {
-            final SQLiteRowSet rows = stmt.executeSelect();
+            final SQLiteCursor rows = stmt.executeQuery();
             if (rows.step()) {
                 return (int) rows.getColumnLong(0);
             }

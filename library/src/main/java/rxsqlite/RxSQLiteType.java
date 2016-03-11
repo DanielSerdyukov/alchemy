@@ -8,7 +8,7 @@ import android.support.annotation.StringDef;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-import sqlite4a.SQLiteRow;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -27,7 +27,7 @@ public interface RxSQLiteType {
     String getType(@NonNull Class<?> type);
 
     @Nullable
-    <T> T getValue(@NonNull SQLiteRow stmt, @IntRange(from = 1) int index);
+    <T> T getValue(@NonNull SQLiteCursor stmt, @IntRange(from = 1) int index);
 
     void bindValue(@NonNull SQLiteStmt stmt, @IntRange(from = 1) int index, @NonNull Object value);
 

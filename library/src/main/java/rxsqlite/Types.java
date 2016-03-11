@@ -8,7 +8,7 @@ import android.support.annotation.VisibleForTesting;
 import java.util.Collection;
 import java.util.Collections;
 
-import sqlite4a.SQLiteRow;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -57,7 +57,7 @@ class Types {
     }
 
     @Nullable
-    <T> T getValue(@NonNull SQLiteRow row, @IntRange(from = 1) int index, @NonNull Class<T> type) {
+    <T> T getValue(@NonNull SQLiteCursor row, @IntRange(from = 1) int index, @NonNull Class<T> type) {
         for (final RxSQLiteType customType : mTypes) {
             if (customType.isAssignable(type)) {
                 return customType.getValue(row, index);
@@ -67,7 +67,8 @@ class Types {
     }
 
     @Nullable
-    <T extends Enum<T>> T getEnumValue(@NonNull SQLiteRow row, @IntRange(from = 1) int index, @NonNull Class<T> type) {
+    <T extends Enum<T>> T getEnumValue(@NonNull SQLiteCursor row, @IntRange(from = 1) int index,
+                                       @NonNull Class<T> type) {
         final String value = row.getColumnString(index);
         if (value != null) {
             return Enum.valueOf(type, value);

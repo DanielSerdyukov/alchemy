@@ -20,7 +20,7 @@ public class CustomTypesMakerTest {
         final JavaFileObject generated = JavaFileObjects.forSourceLines("rxsqlite.CustomTypes",
                 Arrays.asList(
                         "package rxsqlite;",
-                        "import sqlite4a.SQLiteRow;",
+                        "import sqlite4a.SQLiteCursor;",
                         "import sqlite4a.SQLiteStmt;",
                         "public class CustomTypes {",
                         "  private final Types mTypes;",
@@ -33,11 +33,11 @@ public class CustomTypesMakerTest {
                         "  public void bindValue(SQLiteStmt stmt, int index, Object object) {",
                         "    mTypes.bindValue(stmt, index, object);",
                         "  }",
-                        "  public <T> T getValue(SQLiteRow row, int index, Class<T> type) {",
-                        "    return mTypes.getValue(row, index, type);",
+                        "  public <T> T getValue(SQLiteCursor cursor, int index, Class<T> type) {",
+                        "    return mTypes.getValue(cursor, index, type);",
                         "  }",
-                        "  public <T extends Enum<T>> T getEnumValue(SQLiteRow row, int index, Class<T> type) {",
-                        "    return mTypes.getEnumValue(row, index, type);",
+                        "  public <T extends Enum<T>> T getEnumValue(SQLiteCursor cursor, int index, Class<T> type) {",
+                        "    return mTypes.getEnumValue(cursor, index, type);",
                         "  }",
                         "}"
                 ));

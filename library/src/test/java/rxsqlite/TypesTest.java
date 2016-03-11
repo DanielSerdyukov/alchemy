@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 
-import sqlite4a.SQLiteRow;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -27,7 +27,7 @@ public class TypesTest {
     private SQLiteStmt mStmt;
 
     @Mock
-    private SQLiteRow mRow;
+    private SQLiteCursor mCursor;
 
     private Types mTypes;
 
@@ -59,27 +59,27 @@ public class TypesTest {
         final Date expected = new Date();
         final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
         Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        Mockito.doReturn(expected).when(type).getValue(mRow, 1);
+        Mockito.doReturn(expected).when(type).getValue(mCursor, 1);
         final Types types = new Types(Arrays.asList(
                 Mockito.mock(RxSQLiteType.class),
                 Mockito.mock(RxSQLiteType.class),
                 type
         ));
-        Assert.assertThat(types.getValue(mRow, 1, Date.class), Is.is(expected));
+        Assert.assertThat(types.getValue(mCursor, 1, Date.class), Is.is(expected));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetUnsupportedValue() throws Exception {
-        new Types(Collections.<RxSQLiteType>emptyList()).getValue(mRow, 1, Bar.class);
+        new Types(Collections.<RxSQLiteType>emptyList()).getValue(mCursor, 1, Bar.class);
     }
 
     @Test
     public void testGetEnumValue() throws Exception {
-        Mockito.doReturn("VALUE").when(mRow).getColumnString(1);
-        Assert.assertThat(mTypes.getEnumValue(mRow, 1, Bar.class), Is.is(Bar.VALUE));
+        Mockito.doReturn("VALUE").when(mCursor).getColumnString(1);
+        Assert.assertThat(mTypes.getEnumValue(mCursor, 1, Bar.class), Is.is(Bar.VALUE));
 
-        Mockito.doReturn(null).when(mRow).getColumnString(1);
-        Assert.assertThat(mTypes.getEnumValue(mRow, 1, Bar.class), IsNull.nullValue());
+        Mockito.doReturn(null).when(mCursor).getColumnString(1);
+        Assert.assertThat(mTypes.getEnumValue(mCursor, 1, Bar.class), IsNull.nullValue());
     }
 
     @Test
@@ -128,7 +128,7 @@ public class TypesTest {
         final Date expected = new Date();
         final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
         Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        Mockito.doReturn(expected).when(type).getValue(mRow, 1);
+        Mockito.doReturn(expected).when(type).getValue(mCursor, 1);
         final Types types = new Types(Arrays.asList(
                 Mockito.mock(RxSQLiteType.class),
                 Mockito.mock(RxSQLiteType.class),

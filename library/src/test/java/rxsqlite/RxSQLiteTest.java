@@ -19,8 +19,8 @@ import java.util.Queue;
 
 import rx.functions.Func1;
 import rx.observers.TestSubscriber;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
-import sqlite4a.SQLiteRowSet;
 import sqlite4a.SQLiteStmt;
 
 /**
@@ -40,7 +40,7 @@ public class RxSQLiteTest {
     private SQLiteStmt mStmt;
 
     @Mock
-    private SQLiteRowSet mRowSet;
+    private SQLiteCursor mCursor;
 
     @Mock
     private RxSQLiteTable mTable;
@@ -62,7 +62,7 @@ public class RxSQLiteTest {
         Mockito.doReturn(mDb).when(sClient).acquireDatabase(Mockito.<Queue>any());
         Mockito.doReturn(mTable).when(sClient).findTable(Object.class);
         Mockito.doReturn(mStmt).when(mDb).prepare(Mockito.anyString());
-        Mockito.doReturn(mRowSet).when(mStmt).executeSelect();
+        Mockito.doReturn(mCursor).when(mStmt).executeQuery();
     }
 
     @Test

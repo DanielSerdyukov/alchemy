@@ -1,6 +1,13 @@
 Change Log
 ==========
 
+RxSQLite 3.0.0 *(unreleased)*
+-----------------------------
+
+SQLite4a updated to v3.0.0
+RxSQLiteClient.Builder improvements
+RxSQLiteWhere collation support
+
 RxSQLite 2.0.0 *(2016-03-04)*
 ----------------------------
 

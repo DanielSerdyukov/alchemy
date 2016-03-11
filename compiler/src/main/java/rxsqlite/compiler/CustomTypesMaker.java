@@ -64,11 +64,11 @@ class CustomTypesMaker {
         typeSpec.addMethod(MethodSpec.methodBuilder("getValue")
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(T_VAR)
-                .addParameter(TableMaker.SQLITE_ROW, "row")
+                .addParameter(TableMaker.SQLITE_CURSOR, "cursor")
                 .addParameter(TypeName.INT, "index")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), T_VAR), "type")
                 .returns(T_VAR)
-                .addStatement("return mTypes.getValue(row, index, type)")
+                .addStatement("return mTypes.getValue(cursor, index, type)")
                 .build());
     }
 
@@ -77,11 +77,11 @@ class CustomTypesMaker {
                 .addModifiers(Modifier.PUBLIC)
                 .addTypeVariable(TypeVariableName.get("T", ParameterizedTypeName
                         .get(ClassName.get(Enum.class), T_VAR)))
-                .addParameter(TableMaker.SQLITE_ROW, "row")
+                .addParameter(TableMaker.SQLITE_CURSOR, "cursor")
                 .addParameter(TypeName.INT, "index")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), T_VAR), "type")
                 .returns(T_VAR)
-                .addStatement("return mTypes.getEnumValue(row, index, type)")
+                .addStatement("return mTypes.getEnumValue(cursor, index, type)")
                 .build());
     }
 

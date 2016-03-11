@@ -43,9 +43,7 @@ class TableMaker {
 
     static final ClassName SQLITE_STMT = ClassName.get("sqlite4a", "SQLiteStmt");
 
-    static final ClassName SQLITE_ROW = ClassName.get("sqlite4a", "SQLiteRow");
-
-    static final ClassName SQLITE_ROW_SET = ClassName.get("sqlite4a", "SQLiteRowSet");
+    static final ClassName SQLITE_CURSOR = ClassName.get("sqlite4a", "SQLiteCursor");
 
     static final ClassName OBSERVABLE = ClassName.get(Observable.class);
 
@@ -216,9 +214,9 @@ class TableMaker {
                 .beginControlFlow("for (final Object value : bindValues)")
                 .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
-                .addStatement("final $T rows = stmt.executeSelect()", SQLITE_ROW_SET)
-                .beginControlFlow("while (rows.step())")
-                .addStatement("objects.add(instantiate(rows))")
+                .addStatement("final $T cursor = stmt.executeQuery()", SQLITE_CURSOR)
+                .beginControlFlow("while (cursor.step())")
+                .addStatement("objects.add(instantiate(cursor))")
                 .endControlFlow()
                 .addStatement("return $T.from(objects)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -242,8 +240,7 @@ class TableMaker {
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
                 .addStatement("bindStmtValues(stmt, object)")
-                .addStatement("stmt.execute()")
-                .addStatement("object.$L = db.getLastInsertRowId()", mColumnNames.values().iterator().next())
+                .addStatement("object.$L = stmt.executeInsert()", mColumnNames.values().iterator().next())
                 .endControlFlow()
                 .addStatement("return $T.from(objects)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -266,7 +263,7 @@ class TableMaker {
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
                 .addStatement("stmt.bindLong(1, object.$L)", mColumnNames.values().iterator().next())
-                .addStatement("affectedRows += stmt.execute()")
+                .addStatement("affectedRows += stmt.executeUpdateDelete()")
                 .endControlFlow()
                 .addStatement("return $T.just(affectedRows)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -290,7 +287,7 @@ class TableMaker {
                 .beginControlFlow("for (final Object value : bindValues)")
                 .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
-                .addStatement("return $T.just(stmt.execute())", OBSERVABLE)
+                .addStatement("return $T.just(stmt.executeUpdateDelete())", OBSERVABLE)
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
                 .endControlFlow()
@@ -300,7 +297,7 @@ class TableMaker {
     private void brewInstantiateMethod(TypeSpec.Builder typeSpec) throws Exception {
         final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("instantiate")
                 .addModifiers(Modifier.PRIVATE)
-                .addParameter(TableMaker.SQLITE_ROW, "row")
+                .addParameter(TableMaker.SQLITE_CURSOR, "cursor")
                 .returns(mModelClass);
         methodSpec.addStatement("final $1T object = new $1T()", mModelClass);
         int index = 0;
@@ -308,19 +305,20 @@ class TableMaker {
             final String fieldName = entry.getKey();
             final TypeMirror type = entry.getValue();
             if (Utils.isLongType(type)) {
-                methodSpec.addStatement("object.$L = ($L) row.getColumnLong($L)", fieldName, type, index);
+                methodSpec.addStatement("object.$L = ($L) cursor.getColumnLong($L)", fieldName, type, index);
             } else if (Utils.isDoubleType(type)) {
-                methodSpec.addStatement("object.$L = ($L) row.getColumnDouble($L)", fieldName, type, index);
+                methodSpec.addStatement("object.$L = ($L) cursor.getColumnDouble($L)", fieldName, type, index);
             } else if (Utils.isBooleanType(type)) {
-                methodSpec.addStatement("object.$L = row.getColumnLong($L) > 0", fieldName, index);
+                methodSpec.addStatement("object.$L = cursor.getColumnLong($L) > 0", fieldName, index);
             } else if (Utils.isStringType(type)) {
-                methodSpec.addStatement("object.$L = row.getColumnString($L)", fieldName, index);
+                methodSpec.addStatement("object.$L = cursor.getColumnString($L)", fieldName, index);
             } else if (Utils.isBlobType(type)) {
-                methodSpec.addStatement("object.$L = row.getColumnBlob($L)", fieldName, index);
+                methodSpec.addStatement("object.$L = cursor.getColumnBlob($L)", fieldName, index);
             } else if (Utils.isEnumType(type)) {
-                methodSpec.addStatement("object.$L = mTypes.getEnumValue(row, $L, $L.class)", fieldName, index, type);
+                methodSpec.addStatement("object.$L = mTypes.getEnumValue(cursor, $L, $L.class)",
+                        fieldName, index, type);
             } else {
-                methodSpec.addStatement("object.$L = mTypes.getValue(row, $L, $L.class)", fieldName, index, type);
+                methodSpec.addStatement("object.$L = mTypes.getValue(cursor, $L, $L.class)", fieldName, index, type);
             }
             ++index;
         }

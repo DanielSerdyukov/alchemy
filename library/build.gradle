@@ -37,7 +37,7 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:support-annotations:23.2.0'
+    compile 'com.android.support:support-annotations:23.2.1'
     compile deps.sqlite4a
     compile deps.rxjava
     testCompile(deps.junit) {
@@ -49,21 +49,6 @@ dependencies {
     testCompile deps.hamcrest
     testCompile 'org.powermock:powermock-api-mockito:1.6.4'
     testCompile 'org.powermock:powermock-module-junit4:1.6.4'
-}
-
-apply plugin: 'checkstyle'
-
-checkstyle {
-    toolVersion = '6.14.1'
-}
-
-task checkstyle(type: Checkstyle) {
-    configFile rootProject.file('checkstyle.xml')
-    source fileTree('src/main/java')
-    ignoreFailures false
-    showViolations true
-    include '**/*.java'
-    classpath = files()
 }
 
 apply from: 'jacoco.gradle'

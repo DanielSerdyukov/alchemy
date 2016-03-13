@@ -1,6 +1,3 @@
-before_script:
-  - gradle clean checkstyle
-
 tests:
   script:
     - gradle clean testDebugUnitTest

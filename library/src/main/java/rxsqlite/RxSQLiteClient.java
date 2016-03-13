@@ -13,6 +13,7 @@ import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,6 +29,7 @@ import rx.functions.Func1;
 import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
 import sqlite4a.SQLiteStmt;
+import sqlite4a.SQLiteValue;
 
 /**
  * @author Daniel Serdyukov
@@ -302,6 +304,37 @@ public class RxSQLiteClient implements Closeable {
             mDatabasePath = databasePath;
             mOpenFlags = flags;
             mUserVersion = version;
+        }
+
+        @NonNull
+        public Builder enableTracing() {
+            return doOnOpen(new Action1<SQLiteDb>() {
+                @Override
+                public void call(SQLiteDb db) {
+                    db.enableTracing();
+                }
+            });
+        }
+
+        @NonNull
+        public Builder createCollation(@NonNull final String name, @NonNull final Comparator<String> collation) {
+            return doOnOpen(new Action1<SQLiteDb>() {
+                @Override
+                public void call(SQLiteDb db) {
+                    db.createCollation(name, collation);
+                }
+            });
+        }
+
+        @NonNull
+        public Builder createFunction(@NonNull final String name, final int numArgs,
+                                      final Func1<SQLiteValue[], Object> func) {
+            return doOnOpen(new Action1<SQLiteDb>() {
+                @Override
+                public void call(SQLiteDb db) {
+                    db.createFunction(name, numArgs, new CustomFunc(func));
+                }
+            });
         }
 
         @NonNull

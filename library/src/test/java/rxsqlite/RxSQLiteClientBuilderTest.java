@@ -3,28 +3,42 @@ package rxsqlite;
 import android.content.Context;
 import android.util.Log;
 
+import org.hamcrest.core.Is;
+import org.hamcrest.core.IsInstanceOf;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.File;
+import java.util.Comparator;
 
+import rx.functions.Func1;
 import sqlite4a.SQLiteDb;
+import sqlite4a.SQLiteFunc;
 
 /**
  * @author Daniel Serdyukov
  */
+@SuppressWarnings("unchecked")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Log.class)
 public class RxSQLiteClientBuilderTest {
 
+    @Mock
+    private SQLiteDb mDb;
+
     @Before
     public void setUp() throws Exception {
         PowerMockito.mockStatic(Log.class);
+        MockitoAnnotations.initMocks(this);
     }
 
     @Test
@@ -101,6 +115,40 @@ public class RxSQLiteClientBuilderTest {
         final File databasePath = Mockito.mock(File.class);
         Mockito.when(databasePath.getParentFile()).thenReturn(databaseDir);
         RxSQLiteClient.ensureDatabasePathExists(databasePath);
+    }
+
+    @Test
+    public void testEnableTracing() throws Exception {
+        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory()
+                .enableTracing()
+                .build());
+        client.dispatchDatabaseOpen(mDb);
+        Mockito.verify(mDb).enableTracing();
+    }
+
+    @Test
+    public void testCreateCollation() throws Exception {
+        final Comparator collation = Mockito.mock(Comparator.class);
+        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory()
+                .createCollation("RU", collation)
+                .build());
+        client.dispatchDatabaseOpen(mDb);
+        Mockito.verify(mDb).createCollation("RU", collation);
+    }
+
+    @Test
+    public void testCreateFunction() throws Exception {
+        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory()
+                .createFunction("test", 1, Mockito.mock(Func1.class))
+                .build());
+        client.dispatchDatabaseOpen(mDb);
+        final ArgumentCaptor<String> name = ArgumentCaptor.forClass(String.class);
+        final ArgumentCaptor<Integer> numArgs = ArgumentCaptor.forClass(Integer.class);
+        final ArgumentCaptor<SQLiteFunc> func = ArgumentCaptor.forClass(SQLiteFunc.class);
+        Mockito.verify(mDb).createFunction(name.capture(), numArgs.capture(), func.capture());
+        Assert.assertThat(name.getValue(), Is.is("test"));
+        Assert.assertThat(numArgs.getValue(), Is.is(1));
+        Assert.assertThat(func.getValue(), IsInstanceOf.instanceOf(CustomFunc.class));
     }
 
 }

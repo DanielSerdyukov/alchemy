@@ -14,12 +14,16 @@ import java.util.regex.Pattern;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementScanner7;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.SimpleTypeVisitor7;
+import javax.lang.model.util.Types;
 
 /**
  * @author Daniel Serdyukov
@@ -31,11 +35,14 @@ class Utils {
             Pattern.compile("^([a-z][a-zA-Z0-9]*)$")
     );
 
+    private static Types sTypes;
+
     private static Elements sElements;
 
     private static Trees sTrees;
 
     static void init(ProcessingEnvironment processingEnv) {
+        sTypes = processingEnv.getTypeUtils();
         sElements = processingEnv.getElementUtils();
         sTrees = Trees.instance(processingEnv);
     }
@@ -125,6 +132,30 @@ class Utils {
                 return super.visitVariable(e, unused);
             }
         }, null);
+    }
+
+    static void resolve(TypeMirror mirror, final Element[] resolution) {
+        mirror.accept(new SimpleTypeVisitor7<Void, Void>() {
+            @Override
+            public Void visitDeclared(DeclaredType t, Void o) {
+                resolution[0] = t.asElement();
+                final List<? extends TypeMirror> types = t.getTypeArguments();
+                if (!types.isEmpty()) {
+                    resolution[1] = types.get(0).accept(new SimpleTypeVisitor7<Element, Void>() {
+                        @Override
+                        public Element visitDeclared(DeclaredType t, Void aVoid) {
+                            return t.asElement();
+                        }
+                    }, null);
+                }
+                return null;
+            }
+        }, null);
+    }
+
+    static boolean isAssignable(Element element, Class<?> type) {
+        final TypeElement typeElement = sElements.getTypeElement(type.getCanonicalName());
+        return typeElement != null && sTypes.isAssignable(element.asType(), typeElement.asType());
     }
 
 }

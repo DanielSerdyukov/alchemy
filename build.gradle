@@ -4,7 +4,7 @@ subprojects { project ->
             jcenter()
         }
         dependencies {
-            classpath 'com.android.tools.build:gradle:2.1.0-alpha1'
+            classpath 'com.android.tools.build:gradle:2.1.0-alpha3'
             classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.4.0'
             classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
             classpath 'net.sf.proguard:proguard-gradle:5.2.1'
@@ -24,7 +24,7 @@ ext {
 
 ext.deps = [
         rxjava  : 'io.reactivex:rxjava:1.1.1',
-        sqlite4a: 'sqlite4a:library:3.0.0',
+        sqlite4a: 'sqlite4a:library:3.2.0@aar',
         junit   : 'junit:junit:4.12',
         hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0'
 ]
@@ -34,7 +34,7 @@ def getGitVersionName() {
     if (tag =~ /^v.*$/) {
         return tag.substring(1)
     }
-    return '3.0.0'
+    return '3.1.0'
 }
 
 int getGitVersionCode() {

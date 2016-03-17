@@ -3,6 +3,7 @@ package rxsqlite;
 import android.support.annotation.NonNull;
 
 import rx.Observable;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
 
 /**
@@ -23,5 +24,8 @@ public interface RxSQLiteTable<T> {
 
     @NonNull
     Observable<Integer> clear(@NonNull SQLiteDb db, @NonNull String selection, @NonNull Iterable<Object> bindValues);
+
+    @NonNull
+    T instantiate(@NonNull SQLiteDb db, @NonNull SQLiteCursor cursor);
 
 }

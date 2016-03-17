@@ -57,6 +57,8 @@ class TableMaker {
 
     private final List<String> mIndices = new ArrayList<>();
 
+    private final List<OneToOne> mOneToOneRel = new ArrayList<>();
+
     private String mTableName;
 
     private boolean mHasPrimaryKey;
@@ -106,6 +108,16 @@ class TableMaker {
 
         if (annotation.index()) {
             addIndexDefinition(columnName, annotation.unique());
+        }
+    }
+
+    void parseSQLiteRelation(Element field) throws Exception {
+        final Element[] elements = new Element[2];
+        Utils.resolve(field.asType(), elements);
+        if (elements[1] != null && Utils.isAssignable(elements[0], List.class)) {
+            throw new UnsupportedOperationException("One to many relation not implemented yet");
+        } else {
+            mOneToOneRel.add(OneToOne.parse(mTableName, field, elements[0]));
         }
     }
 
@@ -194,7 +206,11 @@ class TableMaker {
         for (final String index : mIndices) {
             query.addStatement("db.exec($S)", index);
         }
-        typeSpec.addMethod(builder.addCode(query.build()).build());
+        builder.addCode(query.build());
+        for (final OneToOne relation : mOneToOneRel) {
+            relation.appendToCreate(builder);
+        }
+        typeSpec.addMethod(builder.build());
     }
 
     private void brewQueryMethod(TypeSpec.Builder typeSpec) throws Exception {
@@ -216,7 +232,7 @@ class TableMaker {
                 .endControlFlow()
                 .addStatement("final $T cursor = stmt.executeQuery()", SQLITE_CURSOR)
                 .beginControlFlow("while (cursor.step())")
-                .addStatement("objects.add(instantiate(cursor))")
+                .addStatement("objects.add(instantiate(db, cursor))")
                 .endControlFlow()
                 .addStatement("return $T.from(objects)", OBSERVABLE)
                 .nextControlFlow("finally")
@@ -296,7 +312,9 @@ class TableMaker {
 
     private void brewInstantiateMethod(TypeSpec.Builder typeSpec) throws Exception {
         final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("instantiate")
-                .addModifiers(Modifier.PRIVATE)
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(TableMaker.SQLITE_DB, "db")
                 .addParameter(TableMaker.SQLITE_CURSOR, "cursor")
                 .returns(mModelClass);
         methodSpec.addStatement("final $1T object = new $1T()", mModelClass);

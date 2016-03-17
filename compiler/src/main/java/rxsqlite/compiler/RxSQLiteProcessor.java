@@ -26,6 +26,7 @@ import javax.tools.Diagnostic;
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
+import rxsqlite.annotation.SQLiteRelation;
 
 /**
  * @author Daniel Serdyukov
@@ -53,6 +54,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         types.add(SQLiteObject.class.getCanonicalName());
         types.add(SQLitePk.class.getCanonicalName());
         types.add(SQLiteColumn.class.getCanonicalName());
+        types.add(SQLiteRelation.class.getCanonicalName());
         return types;
     }
 
@@ -66,6 +68,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         processSQLiteObject(roundEnv, classMap);
         processSQLitePk(roundEnv, classMap);
         processSQLiteColumn(roundEnv, classMap);
+        processSQLiteRelation(roundEnv, classMap);
 
         try {
             CustomTypesMaker.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
@@ -132,6 +135,20 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                         .parseSQLiteColumn(element);
             } catch (Exception e) {
                 parsingError(element, SQLiteColumn.class, e);
+            }
+        }
+    }
+
+    private void processSQLiteRelation(RoundEnvironment roundEnv, Map<TypeElement, TableMaker> classMap) {
+        for (final Element element : roundEnv.getElementsAnnotatedWith(SQLiteRelation.class)) {
+            if (!SuperficialValidation.validateElement(element)) {
+                continue;
+            }
+            try {
+                getOrCreateTableClass((TypeElement) element.getEnclosingElement(), classMap)
+                        .parseSQLiteRelation(element);
+            } catch (Exception e) {
+                parsingError(element, SQLiteRelation.class, e);
             }
         }
     }

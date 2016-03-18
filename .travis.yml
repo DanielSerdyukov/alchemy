@@ -21,11 +21,8 @@ cache:
     - $HOME/.gradle/caches/
     - $HOME/.gradle/wrapper/
 
-before_script:
-  - ./gradlew clean checkstyle
-
 script:
-  - ./gradlew :library:testDebugUnitTest :library:jacocoTestReport :library:coveralls
+  - ./gradlew clean :library:testDebugUnitTest :library:jacocoTestReport :library:coveralls
 
 notifications:
   email: false

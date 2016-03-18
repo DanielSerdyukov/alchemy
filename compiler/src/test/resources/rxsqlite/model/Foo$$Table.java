@@ -25,8 +25,11 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
                 + "_id INTEGER PRIMARY KEY ON CONFLICT REPLACE"
                 + ", column_string TEXT"
                 + ");");
-        db.exec("CREATE TABLE IF NOT EXISTS foo_bar_rel(foo_id INTEGER, bar_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id), FOREIGN KEY(bar_id) REFERENCES bar(_id));");
+        db.exec("CREATE TABLE IF NOT EXISTS foo_bar_rel(foo_id INTEGER, bar_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(bar_id) REFERENCES bar(_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+        db.exec("CREATE INDEX IF NOT EXISTS foo_bar_rel_foo_idx ON foo_bar_rel(foo_id);");
         db.exec("CREATE TRIGGER IF NOT EXISTS delete_bar_after_foo AFTER DELETE ON foo_bar_rel FOR EACH ROW BEGIN DELETE FROM bar WHERE _id = OLD.bar_id; END;");
+        db.exec("CREATE TABLE IF NOT EXISTS foo_baz_rel(foo_id INTEGER, baz_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(baz_id) REFERENCES baz(_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+        db.exec("CREATE INDEX IF NOT EXISTS foo_baz_rel_foo_idx ON foo_baz_rel(foo_id);");
     }
 
     @Override
@@ -107,6 +110,7 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
         final Foo object = new Foo();
         object.mColumnLong = (long) cursor.getColumnLong(0);
         object.mColumnString = cursor.getColumnString(1);
+        object.mBar = queryBarRelation(db, object.mColumnLong);
         return object;
     }
 
@@ -131,6 +135,20 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
                 stmt.close();
             }
         }
+    }
+
+    private Bar queryBarRelation(SQLiteDb db, long pk) {
+        final SQLiteStmt stmt = db.prepare("SELECT bar.* FROM bar, foo_bar_rel WHERE bar._id=foo_bar_rel.bar_id AND foo_bar_rel.foo_id = ?;");
+        try {
+            stmt.bindLong(1, pk);
+            final SQLiteCursor cursor = stmt.executeQuery();
+            if (cursor.step()) {
+                return new Bar$$Table(mTypes).instantiate(db, cursor);
+            }
+        } finally {
+            stmt.close();
+        }
+        return null;
     }
 
 }

@@ -13,7 +13,4 @@ public class Bar {
     @SQLiteColumn
     private String mColumnString;
 
-    /*@SQLiteRelation(onDeleteCascade = true)
-    private List<Baz> mBazs;*/
-
 }

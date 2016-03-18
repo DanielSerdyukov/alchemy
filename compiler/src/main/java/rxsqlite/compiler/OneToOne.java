@@ -30,23 +30,18 @@ class OneToOne implements Relation {
 
     private final boolean mOnDeleteCascade;
 
-    private OneToOne(Element field, String tableName, Element relType, String relTableName, boolean onDeleteCascade) {
-        mField = field;
-        mTableName = tableName;
-        mRelType = relType;
-        mRelTableName = relTableName;
-        mOnDeleteCascade = onDeleteCascade;
-    }
-
-    static OneToOne parse(String tableName, Element field, Element relType) throws Exception {
-        final SQLiteObject table = relType.getAnnotation(SQLiteObject.class);
-        if (table == null) {
+    OneToOne(String tableName, Element field, Element relType) {
+        final SQLiteObject relTable = relType.getAnnotation(SQLiteObject.class);
+        if (relTable == null) {
             throw new IllegalArgumentException(relType + " not annotated with @"
                     + SQLiteObject.class.getCanonicalName());
         }
-        Utils.setAccessible(field);
-        final SQLiteRelation relation = field.getAnnotation(SQLiteRelation.class);
-        return new OneToOne(field, tableName, relType, table.value(), relation.onDeleteCascade());
+        mField = field;
+        mTableName = tableName;
+        mRelType = relType;
+        mRelTableName = relTable.value();
+        mOnDeleteCascade = field.getAnnotation(SQLiteRelation.class).onDeleteCascade();
+        Utils.setAccessible(mField);
     }
 
     @Override
@@ -54,9 +49,11 @@ class OneToOne implements Relation {
         methodSpec.addStatement("db.exec(\"CREATE TABLE IF NOT EXISTS $1L_$2L_rel("
                 + "$1L_id INTEGER, "
                 + "$2L_id INTEGER, "
-                + "FOREIGN KEY($1L_id) REFERENCES $1L(_id), "
-                + "FOREIGN KEY($2L_id) REFERENCES $2L(_id)"
+                + "FOREIGN KEY($1L_id) REFERENCES $1L(_id) ON DELETE CASCADE ON UPDATE CASCADE, "
+                + "FOREIGN KEY($2L_id) REFERENCES $2L(_id) ON DELETE CASCADE ON UPDATE CASCADE"
                 + ");\")", mTableName, mRelTableName);
+        methodSpec.addStatement("db.exec(\"CREATE INDEX IF NOT EXISTS $1L_$2L_rel_$1L_idx"
+                + " ON $1L_$2L_rel($1L_id);\")", mTableName, mRelTableName);
         if (mOnDeleteCascade) {
             methodSpec.addStatement("db.exec(\"CREATE TRIGGER IF NOT EXISTS delete_$2L_after_$1L "
                     + "AFTER DELETE ON $1L_$2L_rel "
@@ -71,6 +68,11 @@ class OneToOne implements Relation {
     @Override
     public void appendToSave(MethodSpec.Builder methodSpec, String pkField) {
         methodSpec.addStatement("$L(db, object.$L, object.$L)", getSaveMethodName(), mField.getSimpleName(), pkField);
+    }
+
+    @Override
+    public void appendToInstantiate(MethodSpec.Builder methodSpec, String pkField) {
+        methodSpec.addStatement("object.$L = $L(db, object.$L)", mField.getSimpleName(), getQueryMethodName(), pkField);
     }
 
     @Override
@@ -98,8 +100,56 @@ class OneToOne implements Relation {
                 .build());
     }
 
-    private String getSaveMethodName() {
+    @Override
+    public void brewQueryRelationMethod(TypeSpec.Builder typeSpec) {
+        typeSpec.addMethod(MethodSpec.methodBuilder(getQueryMethodName())
+                .addModifiers(Modifier.PRIVATE)
+                .addParameter(Consts.SQLITE_DB, "db")
+                .addParameter(TypeName.LONG, "pk")
+                .returns(ClassName.get(mRelType.asType()))
+                .addStatement("final $1T stmt = db.prepare(\"SELECT $3L.* FROM $3L, $2L_$3L_rel"
+                                + " WHERE $3L._id=$2L_$3L_rel.$3L_id AND $2L_$3L_rel.$2L_id = ?;\")",
+                        Consts.SQLITE_STMT, mTableName, mRelTableName)
+                .beginControlFlow("try")
+                .addStatement("stmt.bindLong(1, pk)")
+                .addStatement("final $T cursor = stmt.executeQuery()", Consts.SQLITE_CURSOR)
+                .beginControlFlow("if (cursor.step())")
+                .addStatement("return new $T(mTypes).instantiate(db, cursor)",
+                        ClassName.bestGuess(Table.getTableClassName(mRelType)))
+                .endControlFlow()
+                .nextControlFlow("finally")
+                .addStatement("stmt.close()")
+                .endControlFlow()
+                .addStatement("return null")
+                .build());
+    }
+
+    protected Element getField() {
+        return mField;
+    }
+
+    protected Element getRelType() {
+        return mRelType;
+    }
+
+    protected String getTableName() {
+        return mTableName;
+    }
+
+    protected String getRelTableName() {
+        return mRelTableName;
+    }
+
+    protected boolean isOnDeleteCascade() {
+        return mOnDeleteCascade;
+    }
+
+    protected String getSaveMethodName() {
         return "save" + mRelType.getSimpleName() + "Relation";
+    }
+
+    protected String getQueryMethodName() {
+        return "query" + mRelType.getSimpleName() + "Relation";
     }
 
 }

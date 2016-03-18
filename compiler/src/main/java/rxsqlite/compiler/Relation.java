@@ -12,6 +12,10 @@ interface Relation {
 
     void appendToSave(MethodSpec.Builder builder, String pkField);
 
+    void appendToInstantiate(MethodSpec.Builder builder, String pkField);
+
     void brewSaveRelationMethod(TypeSpec.Builder typeSpec);
+
+    void brewQueryRelationMethod(TypeSpec.Builder typeSpec);
 
 }

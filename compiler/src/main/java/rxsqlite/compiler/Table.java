@@ -109,10 +109,14 @@ class Table {
     void parseSQLiteRelation(Element field) throws Exception {
         final Element[] elements = new Element[2];
         Utils.resolve(field.asType(), elements);
-        if (elements[1] != null && Utils.isAssignable(elements[0], List.class)) {
-            throw new UnsupportedOperationException("One to many relation not implemented yet");
+        if (elements[1] != null) {
+            if (Utils.isAssignable(elements[0], List.class)) {
+                mRelations.add(new OneToMany(mTableName, field, elements[1]));
+            } else {
+                throw new IllegalArgumentException("One to many relation supports only by java.lang.List");
+            }
         } else {
-            mRelations.add(OneToOne.parse(mTableName, field, elements[0]));
+            mRelations.add(new OneToOne(mTableName, field, elements[0]));
         }
     }
 
@@ -142,6 +146,7 @@ class Table {
         brewBindValuesMethod(spec);
         for (Relation relation : mRelations) {
             relation.brewSaveRelationMethod(spec);
+            relation.brewQueryRelationMethod(spec);
         }
         return JavaFile.builder(mModelClass.packageName(), spec.build())
                 .addFileComment("Generated code from RxSQLite. Do not modify!")
@@ -359,6 +364,9 @@ class Table {
                 methodSpec.addStatement("object.$L = mTypes.getValue(cursor, $L, $L.class)", fieldName, index, type);
             }
             ++index;
+        }
+        for (final Relation relation : mRelations) {
+            relation.appendToInstantiate(methodSpec, getPrimaryKeyFieldName());
         }
         methodSpec.addStatement("return object");
         typeSpec.addMethod(methodSpec.build());

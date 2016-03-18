@@ -1,5 +1,7 @@
 package rxsqlite.model;
 
+import java.util.List;
+
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
@@ -17,7 +19,7 @@ public class Foo {
     @SQLiteRelation(onDeleteCascade = true)
     private Bar mBar;
 
-    /*@SQLiteRelation
-    private List<Baz> mBazs;*/
+    @SQLiteRelation
+    private List<Baz> mBazs;
 
 }

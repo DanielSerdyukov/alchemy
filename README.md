@@ -6,8 +6,8 @@ Reactive SQLite extension for Android
 
 ### Gradle
 ```groovy
-compile 'rxsqlite:library:3.0.0'
-provided 'rxsqlite:compiler:3.0.0'
+compile 'rxsqlite:library:3.1.0'
+provided 'rxsqlite:compiler:3.1.0'
 ```
 
 ### Configuration

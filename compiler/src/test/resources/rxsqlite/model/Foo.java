@@ -16,10 +16,10 @@ public class Foo {
     @SQLiteColumn
     private String mColumnString;
 
-    @SQLiteRelation(onDeleteCascade = true)
+    @SQLiteRelation
     private Bar mBar;
 
-    @SQLiteRelation
+    @SQLiteRelation(onDeleteCascade = false)
     private List<Baz> mBazs;
 
 }

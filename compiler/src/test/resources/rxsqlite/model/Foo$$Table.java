@@ -68,6 +68,7 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
                 object.mColumnLong = stmt.executeInsert();
                 rowIds.add(object.mColumnLong);
                 saveBarRelation(db, object.mBar, object.mColumnLong);
+                saveBazRelation(db, object.mBazs, object.mColumnLong);
             }
             return rowIds;
         } finally {
@@ -111,6 +112,7 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
         object.mColumnLong = (long) cursor.getColumnLong(0);
         object.mColumnString = cursor.getColumnString(1);
         object.mBar = queryBarRelation(db, object.mColumnLong);
+        object.mBazs = queryBazRelation(db, object.mColumnLong);
         return object;
     }
 
@@ -124,6 +126,9 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
     }
 
     private void saveBarRelation(SQLiteDb db, Bar rel, long pk) {
+        if (rel == null) {
+            return;
+        }
         final List<Long> relIds = new Bar$$Table(mTypes).blockingSave(db, Collections.singletonList(rel));
         if (!relIds.isEmpty()) {
             final SQLiteStmt stmt = db.prepare("INSERT INTO foo_bar_rel(foo_id, bar_id) VALUES(?, ?);");
@@ -149,6 +154,42 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
             stmt.close();
         }
         return null;
+    }
+
+    private void saveBazRelation(SQLiteDb db, Iterable<Baz> rel, long pk) {
+        if (rel == null) {
+            return;
+        }
+        final List<Long> relIds = new Baz$$Table(mTypes).blockingSave(db, rel);
+        if (!relIds.isEmpty()) {
+            final SQLiteStmt stmt = db.prepare("INSERT INTO foo_baz_rel(foo_id, baz_id) VALUES(?, ?);");
+            try {
+                for (final Long relId : relIds) {
+                    stmt.clearBindings();
+                    stmt.bindLong(1, pk);
+                    stmt.bindLong(2, relId);
+                    stmt.executeInsert();
+                }
+            } finally {
+                stmt.close();
+            }
+        }
+    }
+
+    private List<Baz> queryBazRelation(SQLiteDb db, long pk) {
+        final List<Baz> objects = new ArrayList<>();
+        final SQLiteStmt stmt = db.prepare("SELECT baz.* FROM baz, foo_baz_rel WHERE baz._id=foo_baz_rel.baz_id AND foo_baz_rel.foo_id = ?;");
+        try {
+            stmt.bindLong(1, pk);
+            final SQLiteCursor cursor = stmt.executeQuery();
+            final Baz$$Table table = new Baz$$Table(mTypes);
+            while (cursor.step()) {
+                objects.add(table.instantiate(db, cursor));
+            }
+        } finally {
+            stmt.close();
+        }
+        return objects;
     }
 
 }

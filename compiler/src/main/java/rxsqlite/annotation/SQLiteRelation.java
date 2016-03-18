@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface SQLiteRelation {
 
-    boolean onDeleteCascade() default false;
+    boolean onDeleteCascade() default true;
 
 }

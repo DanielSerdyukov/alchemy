@@ -145,9 +145,9 @@ public class RxSQLiteClientTest {
         subscriber.assertValue(345);
         subscriber.assertCompleted();
         Mockito.verify(mClient).acquireDatabase(Mockito.<Queue>any());
-        Mockito.verify(mDb).exec("BEGIN;");
+        Mockito.verify(mDb).begin();
         Mockito.verify(func).call(mDb);
-        Mockito.verify(mDb).exec("COMMIT;");
+        Mockito.verify(mDb).commit();
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }
 
@@ -159,9 +159,9 @@ public class RxSQLiteClientTest {
         mClient.transaction(func).toBlocking().subscribe(subscriber);
         subscriber.assertError(SQLiteException.class);
         Mockito.verify(mClient).acquireDatabase(Mockito.<Queue>any());
-        Mockito.verify(mDb).exec("BEGIN;");
+        Mockito.verify(mDb).begin();
         Mockito.verify(func).call(mDb);
-        Mockito.verify(mDb).exec("ROLLBACK;");
+        Mockito.verify(mDb).rollback();
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }
 

@@ -155,12 +155,12 @@ public class RxSQLiteClient implements Closeable {
             public Observable<T> call() {
                 final SQLiteDb db = acquireDatabase(mConnections);
                 try {
-                    db.exec("BEGIN;");
+                    db.begin();
                     final Observable<T> observable = factory.call(db);
-                    db.exec("COMMIT;");
+                    db.commit();
                     return observable;
                 } catch (Throwable e) {
-                    db.exec("ROLLBACK;");
+                    db.rollback();
                     return Observable.error(e);
                 } finally {
                     releaseDatabase(mConnections, db);
@@ -312,6 +312,16 @@ public class RxSQLiteClient implements Closeable {
                 @Override
                 public void call(SQLiteDb db) {
                     db.enableTracing();
+                }
+            });
+        }
+
+        @NonNull
+        public Builder enableForeignKeySupport() {
+            return doOnOpen(new Action1<SQLiteDb>() {
+                @Override
+                public void call(SQLiteDb db) {
+                    db.exec("PRAGMA foreign_keys = ON;");
                 }
             });
         }

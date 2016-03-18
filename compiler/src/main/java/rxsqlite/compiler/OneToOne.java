@@ -82,6 +82,9 @@ class OneToOne implements Relation {
                 .addParameter(Consts.SQLITE_DB, "db")
                 .addParameter(ClassName.get(mRelType.asType()), "rel")
                 .addParameter(TypeName.LONG, "pk")
+                .beginControlFlow("if (rel == null)")
+                .addStatement("return")
+                .endControlFlow()
                 .addStatement("final $T relIds = new $T(mTypes).blockingSave(db, $T.singletonList(rel))",
                         ParameterizedTypeName.get(ClassName.get(List.class), ClassName.get(Long.class)),
                         ClassName.bestGuess(Table.getTableClassName(mRelType)),
@@ -124,10 +127,6 @@ class OneToOne implements Relation {
                 .build());
     }
 
-    protected Element getField() {
-        return mField;
-    }
-
     protected Element getRelType() {
         return mRelType;
     }
@@ -138,10 +137,6 @@ class OneToOne implements Relation {
 
     protected String getRelTableName() {
         return mRelTableName;
-    }
-
-    protected boolean isOnDeleteCascade() {
-        return mOnDeleteCascade;
     }
 
     protected String getSaveMethodName() {

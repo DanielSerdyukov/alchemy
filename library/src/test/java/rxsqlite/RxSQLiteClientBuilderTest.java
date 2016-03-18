@@ -127,6 +127,15 @@ public class RxSQLiteClientBuilderTest {
     }
 
     @Test
+    public void testEnableForeignKeySupport() throws Exception {
+        final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory()
+                .enableForeignKeySupport()
+                .build());
+        client.dispatchDatabaseOpen(mDb);
+        Mockito.verify(mDb).exec("PRAGMA foreign_keys = ON;");
+    }
+
+    @Test
     public void testCreateCollation() throws Exception {
         final Comparator collation = Mockito.mock(Comparator.class);
         final RxSQLiteClient client = Mockito.spy(RxSQLiteClient.memory()

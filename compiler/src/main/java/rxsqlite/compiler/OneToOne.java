@@ -48,14 +48,19 @@ class OneToOne implements Relation {
     public void appendToCreate(MethodSpec.Builder methodSpec) {
         methodSpec.addStatement("db.exec(\"CREATE TABLE IF NOT EXISTS $1L_$2L_rel("
                 + "$1L_id INTEGER, "
-                + "$2L_id INTEGER, "
-                + "FOREIGN KEY($1L_id) REFERENCES $1L(_id) ON DELETE CASCADE ON UPDATE CASCADE, "
-                + "FOREIGN KEY($2L_id) REFERENCES $2L(_id) ON DELETE CASCADE ON UPDATE CASCADE"
+                + "$2L_id INTEGER"
                 + ");\")", mTableName, mRelTableName);
         methodSpec.addStatement("db.exec(\"CREATE INDEX IF NOT EXISTS $1L_$2L_rel_$1L_idx"
                 + " ON $1L_$2L_rel($1L_id);\")", mTableName, mRelTableName);
+        methodSpec.addStatement("db.exec(\"CREATE TRIGGER IF NOT EXISTS delete_$1L_$2L_rel "
+                + "AFTER DELETE ON $1L "
+                + "FOR EACH ROW "
+                + "BEGIN "
+                + "DELETE FROM $1L_$2L_rel WHERE $1L_id = OLD._id; "
+                + "END"
+                + ";\")", mTableName, mRelTableName);
         if (mOnDeleteCascade) {
-            methodSpec.addStatement("db.exec(\"CREATE TRIGGER IF NOT EXISTS delete_$2L_after_$1L "
+            methodSpec.addStatement("db.exec(\"CREATE TRIGGER IF NOT EXISTS delete_$2L "
                     + "AFTER DELETE ON $1L_$2L_rel "
                     + "FOR EACH ROW "
                     + "BEGIN "

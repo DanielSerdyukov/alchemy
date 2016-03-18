@@ -25,11 +25,13 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
                 + "_id INTEGER PRIMARY KEY ON CONFLICT REPLACE"
                 + ", column_string TEXT"
                 + ");");
-        db.exec("CREATE TABLE IF NOT EXISTS foo_bar_rel(foo_id INTEGER, bar_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(bar_id) REFERENCES bar(_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+        db.exec("CREATE TABLE IF NOT EXISTS foo_bar_rel(foo_id INTEGER, bar_id INTEGER);");
         db.exec("CREATE INDEX IF NOT EXISTS foo_bar_rel_foo_idx ON foo_bar_rel(foo_id);");
-        db.exec("CREATE TRIGGER IF NOT EXISTS delete_bar_after_foo AFTER DELETE ON foo_bar_rel FOR EACH ROW BEGIN DELETE FROM bar WHERE _id = OLD.bar_id; END;");
-        db.exec("CREATE TABLE IF NOT EXISTS foo_baz_rel(foo_id INTEGER, baz_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY(baz_id) REFERENCES baz(_id) ON DELETE CASCADE ON UPDATE CASCADE);");
+        db.exec("CREATE TRIGGER IF NOT EXISTS delete_foo_bar_rel AFTER DELETE ON foo FOR EACH ROW BEGIN DELETE FROM foo_bar_rel WHERE foo_id = OLD._id; END;");
+        db.exec("CREATE TRIGGER IF NOT EXISTS delete_bar AFTER DELETE ON foo_bar_rel FOR EACH ROW BEGIN DELETE FROM bar WHERE _id = OLD.bar_id; END;");
+        db.exec("CREATE TABLE IF NOT EXISTS foo_baz_rel(foo_id INTEGER, baz_id INTEGER);");
         db.exec("CREATE INDEX IF NOT EXISTS foo_baz_rel_foo_idx ON foo_baz_rel(foo_id);");
+        db.exec("CREATE TRIGGER IF NOT EXISTS delete_foo_baz_rel AFTER DELETE ON foo FOR EACH ROW BEGIN DELETE FROM foo_baz_rel WHERE foo_id = OLD._id; END;");
     }
 
     @Override

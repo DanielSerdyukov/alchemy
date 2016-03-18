@@ -3,6 +3,7 @@ package rxsqlite.model;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import rx.Observable;
 import rxsqlite.CustomTypes;
 import rxsqlite.RxSQLiteTable;
@@ -46,14 +47,22 @@ public class Baz$$Table implements RxSQLiteTable<Baz> {
 
     @Override
     public Observable<Baz> save(SQLiteDb db, Iterable<Baz> objects) {
+        blockingSave(db, objects);
+        return Observable.from(objects);
+    }
+
+    @Override
+    public List<Long> blockingSave(SQLiteDb db, Iterable<Baz> objects) {
         final SQLiteStmt stmt = db.prepare("INSERT INTO baz(_id, column_string) VALUES(?, ?);");
         try {
+            final List<Long> rowIds = new ArrayList<>();
             for (final Baz object : objects) {
                 stmt.clearBindings();
                 bindStmtValues(stmt, object);
                 object.mColumnLong = stmt.executeInsert();
+                rowIds.add(object.mColumnLong);
             }
-            return Observable.from(objects);
+            return rowIds;
         } finally {
             stmt.close();
         }

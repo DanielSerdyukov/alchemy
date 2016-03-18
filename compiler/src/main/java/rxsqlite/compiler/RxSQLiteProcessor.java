@@ -63,7 +63,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return false;
         }
-        final Map<TypeElement, TableMaker> classMap = new LinkedHashMap<>();
+        final Map<TypeElement, Table> classMap = new LinkedHashMap<>();
         final Map<Element, String> schema = new LinkedHashMap<>();
         processSQLiteObject(roundEnv, classMap);
         processSQLitePk(roundEnv, classMap);
@@ -71,14 +71,14 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         processSQLiteRelation(roundEnv, classMap);
 
         try {
-            CustomTypesMaker.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
+            CustomTypes.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
         } catch (IOException e) {
             error(null, "Unable to write CustomTypes class", e.getMessage());
         }
 
-        for (final Map.Entry<TypeElement, TableMaker> entry : classMap.entrySet()) {
+        for (final Map.Entry<TypeElement, Table> entry : classMap.entrySet()) {
             final TypeElement element = entry.getKey();
-            final TableMaker tableClass = entry.getValue();
+            final Table tableClass = entry.getValue();
             try {
                 final JavaFile tableJava = tableClass.brewTableJava();
                 tableJava.writeTo(mFiler);
@@ -89,7 +89,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         }
 
         try {
-            SchemaMaker.brewJava(schema).writeTo(mFiler);
+            Schema.brewJava(schema).writeTo(mFiler);
         } catch (IOException e) {
             error(null, "Unable to write schema class", e.getMessage());
         }
@@ -97,7 +97,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         return true;
     }
 
-    private void processSQLiteObject(RoundEnvironment roundEnv, Map<TypeElement, TableMaker> classMap) {
+    private void processSQLiteObject(RoundEnvironment roundEnv, Map<TypeElement, Table> classMap) {
         for (final Element element : roundEnv.getElementsAnnotatedWith(SQLiteObject.class)) {
             if (!SuperficialValidation.validateElement(element)) {
                 continue;
@@ -111,7 +111,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         }
     }
 
-    private void processSQLitePk(RoundEnvironment roundEnv, Map<TypeElement, TableMaker> classMap) {
+    private void processSQLitePk(RoundEnvironment roundEnv, Map<TypeElement, Table> classMap) {
         for (final Element element : roundEnv.getElementsAnnotatedWith(SQLitePk.class)) {
             if (!SuperficialValidation.validateElement(element)) {
                 continue;
@@ -125,7 +125,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         }
     }
 
-    private void processSQLiteColumn(RoundEnvironment roundEnv, Map<TypeElement, TableMaker> classMap) {
+    private void processSQLiteColumn(RoundEnvironment roundEnv, Map<TypeElement, Table> classMap) {
         for (final Element element : roundEnv.getElementsAnnotatedWith(SQLiteColumn.class)) {
             if (!SuperficialValidation.validateElement(element)) {
                 continue;
@@ -139,7 +139,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         }
     }
 
-    private void processSQLiteRelation(RoundEnvironment roundEnv, Map<TypeElement, TableMaker> classMap) {
+    private void processSQLiteRelation(RoundEnvironment roundEnv, Map<TypeElement, Table> classMap) {
         for (final Element element : roundEnv.getElementsAnnotatedWith(SQLiteRelation.class)) {
             if (!SuperficialValidation.validateElement(element)) {
                 continue;
@@ -153,10 +153,10 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         }
     }
 
-    private TableMaker getOrCreateTableClass(TypeElement element, Map<TypeElement, TableMaker> classMap) {
-        TableMaker tableClass = classMap.get(element);
+    private Table getOrCreateTableClass(TypeElement element, Map<TypeElement, Table> classMap) {
+        Table tableClass = classMap.get(element);
         if (tableClass == null) {
-            tableClass = new TableMaker(element);
+            tableClass = new Table(element);
             classMap.put(element, tableClass);
         }
         return tableClass;

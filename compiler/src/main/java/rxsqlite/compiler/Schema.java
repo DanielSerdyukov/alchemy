@@ -13,7 +13,7 @@ import javax.lang.model.element.Modifier;
 /**
  * @author Daniel Serdyukov
  */
-class SchemaMaker {
+class Schema {
 
     public static final String CLASS_NAME = "SQLite$$Schema";
 
@@ -21,7 +21,7 @@ class SchemaMaker {
         final TypeSpec.Builder spec = TypeSpec.classBuilder(CLASS_NAME)
                 .addModifiers(Modifier.PUBLIC);
         brewCreateMethod(spec, schema);
-        return JavaFile.builder(TableMaker.PACKAGE_NAME, spec.build())
+        return JavaFile.builder(Consts.PACKAGE_NAME, spec.build())
                 .addFileComment("Generated code from RxSQLite. Do not modify!")
                 .skipJavaLangImports(true)
                 .build();
@@ -32,7 +32,7 @@ class SchemaMaker {
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
                 .addParameter(ClassName.get("rxsqlite", "RxSQLiteClient"), "client")
                 .addParameter(ClassName.get("rxsqlite", "Types"), "types")
-                .addStatement("final $1T customTypes = new $1T(types)", CustomTypesMaker.className());
+                .addStatement("final $1T customTypes = new $1T(types)", CustomTypes.className());
         for (final Map.Entry<Element, String> entry : schema.entrySet()) {
             methodSpec.addStatement("client.registerTable($T.class, new $T(customTypes))",
                     ClassName.get(entry.getKey().asType()),

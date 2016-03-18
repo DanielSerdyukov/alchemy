@@ -23,7 +23,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
-import rx.Observable;
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
@@ -31,21 +30,9 @@ import rxsqlite.annotation.SQLitePk;
 /**
  * @author Daniel Serdyukov
  */
-class TableMaker {
+class Table {
 
-    static final String PACKAGE_NAME = "rxsqlite";
-
-    static final ClassName RXS_TABLE = ClassName.get(PACKAGE_NAME, "RxSQLiteTable");
-
-    static final ClassName RXS_TYPES = ClassName.get(PACKAGE_NAME, "Types");
-
-    static final ClassName SQLITE_DB = ClassName.get("sqlite4a", "SQLiteDb");
-
-    static final ClassName SQLITE_STMT = ClassName.get("sqlite4a", "SQLiteStmt");
-
-    static final ClassName SQLITE_CURSOR = ClassName.get("sqlite4a", "SQLiteCursor");
-
-    static final ClassName OBSERVABLE = ClassName.get(Observable.class);
+    private static final String CLASS_SUFFIX = "$$Table";
 
     private final ClassName mModelClass;
 
@@ -57,14 +44,22 @@ class TableMaker {
 
     private final List<String> mIndices = new ArrayList<>();
 
-    private final List<OneToOne> mOneToOneRel = new ArrayList<>();
+    private final List<Relation> mRelations = new ArrayList<>();
 
     private String mTableName;
 
     private boolean mHasPrimaryKey;
 
-    TableMaker(TypeElement element) {
+    Table(TypeElement element) {
         mModelClass = ClassName.get(element);
+    }
+
+    static String getTableClassName(ClassName modelClass) {
+        return modelClass.simpleName() + CLASS_SUFFIX;
+    }
+
+    static String getTableClassName(Element type) {
+        return type.getSimpleName() + CLASS_SUFFIX;
     }
 
     void parseSQLiteObject(Element element) throws Exception {
@@ -117,7 +112,7 @@ class TableMaker {
         if (elements[1] != null && Utils.isAssignable(elements[0], List.class)) {
             throw new UnsupportedOperationException("One to many relation not implemented yet");
         } else {
-            mOneToOneRel.add(OneToOne.parse(mTableName, field, elements[0]));
+            mRelations.add(OneToOne.parse(mTableName, field, elements[0]));
         }
     }
 
@@ -128,22 +123,26 @@ class TableMaker {
         if (!mHasPrimaryKey) {
             throw new IllegalArgumentException("has no field annotated with @" + SQLitePk.class.getCanonicalName());
         }
-        final TypeSpec.Builder spec = TypeSpec.classBuilder(mModelClass.simpleName() + "$$Table")
+        final TypeSpec.Builder spec = TypeSpec.classBuilder(getTableClassName(mModelClass))
                 .addModifiers(Modifier.PUBLIC)
-                .addSuperinterface(ParameterizedTypeName.get(RXS_TABLE, mModelClass))
-                .addField(CustomTypesMaker.className(), "mTypes", Modifier.PRIVATE, Modifier.FINAL)
+                .addSuperinterface(ParameterizedTypeName.get(Consts.RXS_TABLE, mModelClass))
+                .addField(CustomTypes.className(), "mTypes", Modifier.PRIVATE, Modifier.FINAL)
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
-                        .addParameter(CustomTypesMaker.className(), "types")
+                        .addParameter(CustomTypes.className(), "types")
                         .addStatement("mTypes = types")
                         .build());
         brewCreateMethod(spec);
         brewQueryMethod(spec);
         brewSaveMethod(spec);
+        brewBlockingSaveMethod(spec);
         brewRemoveMethod(spec);
         brewClearMethod(spec);
         brewInstantiateMethod(spec);
         brewBindValuesMethod(spec);
+        for (Relation relation : mRelations) {
+            relation.brewSaveRelationMethod(spec);
+        }
         return JavaFile.builder(mModelClass.packageName(), spec.build())
                 .addFileComment("Generated code from RxSQLite. Do not modify!")
                 .skipJavaLangImports(true)
@@ -191,7 +190,7 @@ class TableMaker {
         final MethodSpec.Builder builder = MethodSpec.methodBuilder("create")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db");
+                .addParameter(Consts.SQLITE_DB, "db");
         final String constraints = mDefinitions.removeFirst();
         if (!"\", \"".equals(constraints)) {
             mDefinitions.addLast(constraints);
@@ -207,7 +206,7 @@ class TableMaker {
             query.addStatement("db.exec($S)", index);
         }
         builder.addCode(query.build());
-        for (final OneToOne relation : mOneToOneRel) {
+        for (final Relation relation : mRelations) {
             relation.appendToCreate(builder);
         }
         typeSpec.addMethod(builder.build());
@@ -217,12 +216,13 @@ class TableMaker {
         typeSpec.addMethod(MethodSpec.methodBuilder("query")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db")
+                .addParameter(Consts.SQLITE_DB, "db")
                 .addParameter(String.class, "selection")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class),
                         ClassName.get(Object.class)), "bindValues")
-                .returns(ParameterizedTypeName.get(OBSERVABLE, mModelClass))
-                .addStatement("final $T stmt = db.prepare(\"SELECT * FROM $L\" + selection)", SQLITE_STMT, mTableName)
+                .returns(ParameterizedTypeName.get(Consts.OBSERVABLE, mModelClass))
+                .addStatement("final $T stmt = db.prepare(\"SELECT * FROM $L\" + selection)",
+                        Consts.SQLITE_STMT, mTableName)
                 .beginControlFlow("try")
                 .addStatement("final $T objects = new $T<>()", ParameterizedTypeName
                         .get(ClassName.get(List.class), mModelClass), ClassName.get(ArrayList.class))
@@ -230,11 +230,11 @@ class TableMaker {
                 .beginControlFlow("for (final Object value : bindValues)")
                 .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
-                .addStatement("final $T cursor = stmt.executeQuery()", SQLITE_CURSOR)
+                .addStatement("final $T cursor = stmt.executeQuery()", Consts.SQLITE_CURSOR)
                 .beginControlFlow("while (cursor.step())")
                 .addStatement("objects.add(instantiate(db, cursor))")
                 .endControlFlow()
-                .addStatement("return $T.from(objects)", OBSERVABLE)
+                .addStatement("return $T.from(objects)", Consts.OBSERVABLE)
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
                 .endControlFlow()
@@ -242,46 +242,65 @@ class TableMaker {
     }
 
     private void brewSaveMethod(TypeSpec.Builder typeSpec) throws Exception {
-        final Set<String> columns = mColumnNames.keySet();
-        final List<String> binding = Collections.nCopies(columns.size(), "?");
         typeSpec.addMethod(MethodSpec.methodBuilder("save")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db")
+                .addParameter(Consts.SQLITE_DB, "db")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class), mModelClass), "objects")
-                .returns(ParameterizedTypeName.get(OBSERVABLE, mModelClass))
+                .returns(ParameterizedTypeName.get(Consts.OBSERVABLE, mModelClass))
+                .addStatement("blockingSave(db, objects)")
+                .addStatement("return $T.from(objects)", Consts.OBSERVABLE)
+                .build());
+    }
+
+    private void brewBlockingSaveMethod(TypeSpec.Builder typeSpec) {
+        final Set<String> columns = mColumnNames.keySet();
+        final List<String> binding = Collections.nCopies(columns.size(), "?");
+        final String pkField = getPrimaryKeyFieldName();
+        final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("blockingSave")
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Override.class)
+                .addParameter(Consts.SQLITE_DB, "db")
+                .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class), mModelClass), "objects")
+                .returns(ParameterizedTypeName.get(ClassName.get(List.class), ClassName.get(Long.class)))
                 .addStatement("final $T stmt = db.prepare(\"INSERT INTO $L($L) VALUES($L);\")",
-                        SQLITE_STMT, mTableName, Utils.join(", ", columns), Utils.join(", ", binding))
+                        Consts.SQLITE_STMT, mTableName, Utils.join(", ", columns), Utils.join(", ", binding))
                 .beginControlFlow("try")
+                .addStatement("final $T rowIds = new $T<>()", ParameterizedTypeName.get(
+                        ClassName.get(List.class), ClassName.get(Long.class)), ClassName.get(ArrayList.class))
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
                 .addStatement("bindStmtValues(stmt, object)")
-                .addStatement("object.$L = stmt.executeInsert()", mColumnNames.values().iterator().next())
-                .endControlFlow()
-                .addStatement("return $T.from(objects)", OBSERVABLE)
+                .addStatement("object.$L = stmt.executeInsert()", pkField)
+                .addStatement("rowIds.add(object.$L)", pkField);
+        for (final Relation relation : mRelations) {
+            relation.appendToSave(methodSpec, pkField);
+        }
+        methodSpec.endControlFlow()
+                .addStatement("return rowIds")
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
-                .endControlFlow()
-                .build());
+                .endControlFlow();
+        typeSpec.addMethod(methodSpec.build());
     }
 
     private void brewRemoveMethod(TypeSpec.Builder typeSpec) throws Exception {
         typeSpec.addMethod(MethodSpec.methodBuilder("remove")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db")
+                .addParameter(Consts.SQLITE_DB, "db")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class), mModelClass), "objects")
-                .returns(ParameterizedTypeName.get(OBSERVABLE, ClassName.get(Integer.class)))
+                .returns(ParameterizedTypeName.get(Consts.OBSERVABLE, ClassName.get(Integer.class)))
                 .addStatement("final $T stmt = db.prepare(\"DELETE FROM $L WHERE _id = ?;\")",
-                        SQLITE_STMT, mTableName)
+                        Consts.SQLITE_STMT, mTableName)
                 .beginControlFlow("try")
                 .addStatement("int affectedRows = 0")
                 .beginControlFlow("for (final $T object : objects)", mModelClass)
                 .addStatement("stmt.clearBindings()")
-                .addStatement("stmt.bindLong(1, object.$L)", mColumnNames.values().iterator().next())
+                .addStatement("stmt.bindLong(1, object.$L)", getPrimaryKeyFieldName())
                 .addStatement("affectedRows += stmt.executeUpdateDelete()")
                 .endControlFlow()
-                .addStatement("return $T.just(affectedRows)", OBSERVABLE)
+                .addStatement("return $T.just(affectedRows)", Consts.OBSERVABLE)
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
                 .endControlFlow()
@@ -292,18 +311,19 @@ class TableMaker {
         typeSpec.addMethod(MethodSpec.methodBuilder("clear")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addParameter(SQLITE_DB, "db")
+                .addParameter(Consts.SQLITE_DB, "db")
                 .addParameter(String.class, "selection")
                 .addParameter(ParameterizedTypeName.get(ClassName.get(Iterable.class),
                         ClassName.get(Object.class)), "bindValues")
-                .returns(ParameterizedTypeName.get(OBSERVABLE, ClassName.get(Integer.class)))
-                .addStatement("final $T stmt = db.prepare(\"DELETE FROM $L\" + selection)", SQLITE_STMT, mTableName)
+                .returns(ParameterizedTypeName.get(Consts.OBSERVABLE, ClassName.get(Integer.class)))
+                .addStatement("final $T stmt = db.prepare(\"DELETE FROM $L\" + selection)",
+                        Consts.SQLITE_STMT, mTableName)
                 .beginControlFlow("try")
                 .addStatement("int index = 0")
                 .beginControlFlow("for (final Object value : bindValues)")
                 .addStatement("mTypes.bindValue(stmt, ++index, value)")
                 .endControlFlow()
-                .addStatement("return $T.just(stmt.executeUpdateDelete())", OBSERVABLE)
+                .addStatement("return $T.just(stmt.executeUpdateDelete())", Consts.OBSERVABLE)
                 .nextControlFlow("finally")
                 .addStatement("stmt.close()")
                 .endControlFlow()
@@ -314,8 +334,8 @@ class TableMaker {
         final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("instantiate")
                 .addAnnotation(Override.class)
                 .addModifiers(Modifier.PUBLIC)
-                .addParameter(TableMaker.SQLITE_DB, "db")
-                .addParameter(TableMaker.SQLITE_CURSOR, "cursor")
+                .addParameter(Consts.SQLITE_DB, "db")
+                .addParameter(Consts.SQLITE_CURSOR, "cursor")
                 .returns(mModelClass);
         methodSpec.addStatement("final $1T object = new $1T()", mModelClass);
         int index = 0;
@@ -347,7 +367,7 @@ class TableMaker {
     private void brewBindValuesMethod(TypeSpec.Builder typeSpec) throws Exception {
         final MethodSpec.Builder methodSpec = MethodSpec.methodBuilder("bindStmtValues")
                 .addModifiers(Modifier.PRIVATE)
-                .addParameter(SQLITE_STMT, "stmt")
+                .addParameter(Consts.SQLITE_STMT, "stmt")
                 .addParameter(mModelClass, "object");
         final Iterator<Map.Entry<String, String>> iterator = mColumnNames.entrySet().iterator();
         int index = 1;
@@ -386,6 +406,10 @@ class TableMaker {
             }
         }
         typeSpec.addMethod(methodSpec.build());
+    }
+
+    private String getPrimaryKeyFieldName() {
+        return mColumnNames.values().iterator().next();
     }
 
 }

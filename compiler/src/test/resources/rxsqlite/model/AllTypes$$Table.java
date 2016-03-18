@@ -57,14 +57,22 @@ public class AllTypes$$Table implements RxSQLiteTable<AllTypes> {
 
     @Override
     public Observable<AllTypes> save(SQLiteDb db, Iterable<AllTypes> objects) {
+        blockingSave(db, objects);
+        return Observable.from(objects);
+    }
+
+    @Override
+    public List<Long> blockingSave(SQLiteDb db, Iterable<AllTypes> objects) {
         final SQLiteStmt stmt = db.prepare("INSERT INTO all_types(_id, column_int, column_short, column_double, column_bool, my_float, column_string, column_bytes, column_date, column_enum) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
         try {
+            final List<Long> rowIds = new ArrayList<>();
             for (final AllTypes object : objects) {
                 stmt.clearBindings();
                 bindStmtValues(stmt, object);
                 object.mColumnLong = stmt.executeInsert();
+                rowIds.add(object.mColumnLong);
             }
-            return Observable.from(objects);
+            return rowIds;
         } finally {
             stmt.close();
         }

@@ -46,14 +46,22 @@ public class Bar$$Table implements RxSQLiteTable<Bar> {
 
     @Override
     public Observable<Bar> save(SQLiteDb db, Iterable<Bar> objects) {
+        blockingSave(db, objects);
+        return Observable.from(objects);
+    }
+
+    @Override
+    public List<Long> blockingSave(SQLiteDb db, Iterable<Bar> objects) {
         final SQLiteStmt stmt = db.prepare("INSERT INTO bar(_id, column_string) VALUES(?, ?);");
         try {
+            final List<Long> rowIds = new ArrayList<>();
             for (final Bar object : objects) {
                 stmt.clearBindings();
                 bindStmtValues(stmt, object);
                 object.mColumnLong = stmt.executeInsert();
+                rowIds.add(object.mColumnLong);
             }
-            return Observable.from(objects);
+            return rowIds;
         } finally {
             stmt.close();
         }

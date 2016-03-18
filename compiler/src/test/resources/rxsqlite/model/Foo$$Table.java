@@ -2,6 +2,7 @@
 package rxsqlite.model;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import rx.Observable;
@@ -25,6 +26,7 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
                 + ", column_string TEXT"
                 + ");");
         db.exec("CREATE TABLE IF NOT EXISTS foo_bar_rel(foo_id INTEGER, bar_id INTEGER, FOREIGN KEY(foo_id) REFERENCES foo(_id), FOREIGN KEY(bar_id) REFERENCES bar(_id));");
+        db.exec("CREATE TRIGGER IF NOT EXISTS delete_bar_after_foo AFTER DELETE ON foo_bar_rel FOR EACH ROW BEGIN DELETE FROM bar WHERE _id = OLD.bar_id; END;");
     }
 
     @Override
@@ -48,14 +50,23 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
 
     @Override
     public Observable<Foo> save(SQLiteDb db, Iterable<Foo> objects) {
+        blockingSave(db, objects);
+        return Observable.from(objects);
+    }
+
+    @Override
+    public List<Long> blockingSave(SQLiteDb db, Iterable<Foo> objects) {
         final SQLiteStmt stmt = db.prepare("INSERT INTO foo(_id, column_string) VALUES(?, ?);");
         try {
+            final List<Long> rowIds = new ArrayList<>();
             for (final Foo object : objects) {
                 stmt.clearBindings();
                 bindStmtValues(stmt, object);
                 object.mColumnLong = stmt.executeInsert();
+                rowIds.add(object.mColumnLong);
+                saveBarRelation(db, object.mBar, object.mColumnLong);
             }
-            return Observable.from(objects);
+            return rowIds;
         } finally {
             stmt.close();
         }
@@ -106,6 +117,20 @@ public class Foo$$Table implements RxSQLiteTable<Foo> {
             stmt.bindNull(1);
         }
         stmt.bindString(2, object.mColumnString);
+    }
+
+    private void saveBarRelation(SQLiteDb db, Bar rel, long pk) {
+        final List<Long> relIds = new Bar$$Table(mTypes).blockingSave(db, Collections.singletonList(rel));
+        if (!relIds.isEmpty()) {
+            final SQLiteStmt stmt = db.prepare("INSERT INTO foo_bar_rel(foo_id, bar_id) VALUES(?, ?);");
+            try {
+                stmt.bindLong(1, pk);
+                stmt.bindLong(2, relIds.get(0));
+                stmt.executeInsert();
+            } finally {
+                stmt.close();
+            }
+        }
     }
 
 }

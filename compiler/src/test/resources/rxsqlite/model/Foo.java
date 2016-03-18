@@ -14,7 +14,7 @@ public class Foo {
     @SQLiteColumn
     private String mColumnString;
 
-    @SQLiteRelation
+    @SQLiteRelation(onDeleteCascade = true)
     private Bar mBar;
 
     /*@SQLiteRelation

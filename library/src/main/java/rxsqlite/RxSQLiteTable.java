@@ -2,6 +2,8 @@ package rxsqlite;
 
 import android.support.annotation.NonNull;
 
+import java.util.List;
+
 import rx.Observable;
 import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
@@ -18,6 +20,9 @@ public interface RxSQLiteTable<T> {
 
     @NonNull
     Observable<T> save(@NonNull SQLiteDb db, @NonNull Iterable<T> objects);
+
+    @NonNull
+    List<Long> blockingSave(@NonNull SQLiteDb db, @NonNull Iterable<T> objects);
 
     @NonNull
     Observable<Integer> remove(@NonNull SQLiteDb db, Iterable<T> objects);

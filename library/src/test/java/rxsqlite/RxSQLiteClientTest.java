@@ -26,6 +26,7 @@ import rx.Observable;
 import rx.functions.Action1;
 import rx.functions.Action3;
 import rx.functions.Func1;
+import rx.functions.Func2;
 import rx.observers.TestSubscriber;
 import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
@@ -103,7 +104,7 @@ public class RxSQLiteClientTest {
         Mockito.doAnswer(Answers.stmtStep(3)).when(mCursor).step();
         final TestSubscriber<String> subscriber = TestSubscriber.create();
         final List<Object> objects = Arrays.<Object>asList(100L, "Joe");
-        final Func1 factory = Mockito.mock(Func1.class);
+        final Func2 factory = Mockito.mock(Func2.class);
         mClient.query("SELECT * FROM foo WHERE id = ? AND name = ?", objects, factory)
                 .toBlocking()
                 .subscribe(subscriber);
@@ -114,7 +115,7 @@ public class RxSQLiteClientTest {
         Mockito.verify(mDb).prepare("SELECT * FROM foo WHERE id = ? AND name = ?");
         Mockito.verify(mTypes).bindValue(mStmt, 1, 100L);
         Mockito.verify(mTypes).bindValue(mStmt, 2, "Joe");
-        Mockito.verify(factory, Mockito.times(3)).call(Mockito.any(SQLiteCursor.class));
+        Mockito.verify(factory, Mockito.times(3)).call(Mockito.<SQLiteDb>any(), Mockito.<SQLiteCursor>any());
         Mockito.verify(mStmt).close();
         Mockito.verify(mClient).releaseDatabase(Mockito.<Queue>any(), Mockito.<SQLiteDb>any());
     }

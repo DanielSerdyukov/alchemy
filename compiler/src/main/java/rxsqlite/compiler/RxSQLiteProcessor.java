@@ -27,6 +27,7 @@ import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
 import rxsqlite.annotation.SQLiteRelation;
+import rxsqlite.annotation.SQLiteStringList;
 
 /**
  * @author Daniel Serdyukov
@@ -69,6 +70,7 @@ public class RxSQLiteProcessor extends AbstractProcessor {
         processSQLitePk(roundEnv, classMap);
         processSQLiteColumn(roundEnv, classMap);
         processSQLiteRelation(roundEnv, classMap);
+        processSQLiteStringList(roundEnv, classMap);
 
         try {
             CustomTypes.brewJava().writeTo(mFiler); // needs to access package private class RxSQLiteBinder
@@ -149,6 +151,20 @@ public class RxSQLiteProcessor extends AbstractProcessor {
                         .parseSQLiteRelation(element);
             } catch (Exception e) {
                 parsingError(element, SQLiteRelation.class, e);
+            }
+        }
+    }
+
+    private void processSQLiteStringList(RoundEnvironment roundEnv, Map<TypeElement, Table> classMap) {
+        for (final Element element : roundEnv.getElementsAnnotatedWith(SQLiteStringList.class)) {
+            if (!SuperficialValidation.validateElement(element)) {
+                continue;
+            }
+            try {
+                getOrCreateTableClass((TypeElement) element.getEnclosingElement(), classMap)
+                        .parseSQLiteStringList(element);
+            } catch (Exception e) {
+                parsingError(element, SQLiteStringList.class, e);
             }
         }
     }

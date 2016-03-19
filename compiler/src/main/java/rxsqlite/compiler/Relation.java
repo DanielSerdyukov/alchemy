@@ -8,11 +8,11 @@ import com.squareup.javapoet.TypeSpec;
  */
 interface Relation {
 
-    void appendToCreate(MethodSpec.Builder builder);
+    void appendToCreate(MethodSpec.Builder methodSpec);
 
-    void appendToSave(MethodSpec.Builder builder, String pkField);
+    void appendToSave(MethodSpec.Builder methodSpec, String pkField);
 
-    void appendToInstantiate(MethodSpec.Builder builder, String pkField);
+    void appendToInstantiate(MethodSpec.Builder methodSpec, String pkField);
 
     void brewSaveRelationMethod(TypeSpec.Builder typeSpec);
 

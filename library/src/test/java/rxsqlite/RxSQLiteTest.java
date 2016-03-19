@@ -72,6 +72,15 @@ public class RxSQLiteTest {
     }
 
     @Test
+    public void testRawQuery() throws Exception {
+        RxSQLite.rawQuery(Object.class, "SELECT * FOM foo WHERE _id = ?;", 100L)
+                .toBlocking()
+                .subscribe(TestSubscriber.create());
+        Mockito.verify(mDb).prepare("SELECT * FOM foo WHERE _id = ?;");
+        Mockito.verify(mStmt).bindLong(1, 100L);
+    }
+
+    @Test
     public void testQueryWithWhere() throws Exception {
         RxSQLite.query(Object.class, new RxSQLiteWhere()
                 .between("age", 18, 25))

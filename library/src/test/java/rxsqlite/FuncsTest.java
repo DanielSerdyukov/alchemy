@@ -1,8 +1,12 @@
 package rxsqlite;
 
+import org.hamcrest.collection.IsArrayContaining;
+import org.hamcrest.core.Is;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -10,6 +14,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.util.Collections;
 import java.util.List;
 
+import rx.functions.Func2;
 import rx.observers.TestSubscriber;
 import sqlite4a.SQLiteDb;
 
@@ -43,6 +48,19 @@ public class FuncsTest {
         final List<Object> bindValues = Collections.singletonList(new Object());
         Funcs.query(mClient, Object.class, selection, bindValues).call(mDb);
         Mockito.verify(mTable).query(mDb, selection, bindValues);
+    }
+
+    @Test
+    public void testRawQuery() throws Exception {
+        final String sql = "SELECT * FROM foo WHERE _id = ?;";
+        final Object bindArg = new Object();
+        Funcs.rawQuery(mClient, Object.class, sql, Collections.singletonList(bindArg)).call(mDb);
+        final ArgumentCaptor<String> query = ArgumentCaptor.forClass(String.class);
+        final ArgumentCaptor<List> values = ArgumentCaptor.forClass(List.class);
+        final ArgumentCaptor<Func2> func = ArgumentCaptor.forClass(Func2.class);
+        Mockito.verify(mClient).query(query.capture(), values.capture(), func.capture());
+        Assert.assertThat(query.getValue(), Is.is(sql));
+        Assert.assertThat(values.getValue().toArray(), IsArrayContaining.hasItemInArray(bindArg));
     }
 
     @Test

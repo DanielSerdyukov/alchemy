@@ -6,6 +6,8 @@ import java.util.Iterator;
 
 import rx.Observable;
 import rx.functions.Func1;
+import rx.functions.Func2;
+import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
 
 /**
@@ -23,6 +25,23 @@ final class Funcs {
             @Override
             public Observable<T> call(SQLiteDb db) {
                 return client.<T>findTable(type).query(db, selection, bindValues);
+            }
+        };
+    }
+
+    @NonNull
+    static <T> Func1<SQLiteDb, Observable<T>> rawQuery(@NonNull final RxSQLiteClient client,
+            @NonNull final Class<T> type, @NonNull final String sql, @NonNull final Iterable<Object> bindValues) {
+        return new Func1<SQLiteDb, Observable<T>>() {
+            @Override
+            public Observable<T> call(SQLiteDb db) {
+                final RxSQLiteTable<T> table = client.findTable(type);
+                return client.query(sql, bindValues, new Func2<SQLiteDb, SQLiteCursor, T>() {
+                    @Override
+                    public T call(SQLiteDb db, SQLiteCursor cursor) {
+                        return table.instantiate(db, cursor);
+                    }
+                });
             }
         };
     }
@@ -70,4 +89,5 @@ final class Funcs {
             }
         };
     }
+
 }

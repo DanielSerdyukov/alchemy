@@ -3,6 +3,7 @@ package rxsqlite;
 import android.support.annotation.NonNull;
 import android.support.annotation.VisibleForTesting;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +37,12 @@ public final class RxSQLite {
     public static <T> Observable<T> query(@NonNull final Class<T> type, @NonNull final RxSQLiteWhere where) {
         final RxSQLiteClient client = requireClientNotNull();
         return client.execute(Funcs.query(client, type, where.toSelectSql(), where.getBindValues()));
+    }
+
+    @NonNull
+    public static <T> Observable<T> rawQuery(@NonNull final Class<T> type, @NonNull String sql, Object... bindArgs) {
+        final RxSQLiteClient client = requireClientNotNull();
+        return client.execute(Funcs.rawQuery(client, type, sql, Arrays.asList(bindArgs)));
     }
 
     @NonNull
@@ -88,6 +95,11 @@ public final class RxSQLite {
     @NonNull
     public static <T> Observable<T> execute(@NonNull Func1<SQLiteDb, Observable<T>> factory) {
         return requireClientNotNull().execute(factory);
+    }
+
+    @NonNull
+    public static <T> Observable<T> transaction(@NonNull Func1<SQLiteDb, Observable<T>> factory) {
+        return requireClientNotNull().transaction(factory);
     }
 
     @VisibleForTesting

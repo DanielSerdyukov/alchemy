@@ -34,6 +34,9 @@ public class AllTypes$$Table implements RxSQLiteTable<AllTypes> {
                 + ");");
         db.exec("CREATE INDEX IF NOT EXISTS all_types_idx0 ON all_types(column_int);");
         db.exec("CREATE UNIQUE INDEX IF NOT EXISTS all_types_idx1 ON all_types(column_short);");
+        db.exec("CREATE TABLE IF NOT EXISTS all_types_string_list_values(all_types_id INTEGER, value TEXT);");
+        db.exec("CREATE INDEX IF NOT EXISTS all_types_string_list_values_idx ON all_types_string_list_values(all_types_id);");
+        db.exec("CREATE TRIGGER IF NOT EXISTS delete_all_types_string_list_values AFTER DELETE ON all_types FOR EACH ROW BEGIN DELETE FROM all_types_string_list_values WHERE all_types_id = OLD._id; END;");
     }
 
     @Override
@@ -71,6 +74,7 @@ public class AllTypes$$Table implements RxSQLiteTable<AllTypes> {
                 bindStmtValues(stmt, object);
                 object.mColumnLong = stmt.executeInsert();
                 rowIds.add(object.mColumnLong);
+                saveStringListValues(db, object.mStringList, object.mColumnLong)
             }
             return rowIds;
         } finally {
@@ -121,6 +125,7 @@ public class AllTypes$$Table implements RxSQLiteTable<AllTypes> {
         object.mColumnBytes = cursor.getColumnBlob(7);
         object.mColumnDate = mTypes.getValue(cursor, 8, java.util.Date.class);
         object.mColumnEnum = mTypes.getEnumValue(cursor, 9, rxsqlite.model.AllTypes.EnumType.class);
+        object.mStringList = queryStringListValues(db, object.mColumnLong);
         return object;
     }
 
@@ -143,5 +148,37 @@ public class AllTypes$$Table implements RxSQLiteTable<AllTypes> {
         } else {
             stmt.bindNull(10);
         }
+    }
+
+    private void saveStringListValues(SQLiteDb db, Iterable<String> values, long pk) {
+        if (values == null) {
+            return;
+        }
+        final SQLiteStmt stmt = db.prepare("INSERT INTO all_types_string_list_values VALUES(?, ?);");
+        try {
+            for (final String value : values) {
+                stmt.clearBindings();
+                stmt.bindLong(1, pk);
+                stmt.bindString(2, value);
+                stmt.executeInsert();
+            }
+        } finally {
+            stmt.close();
+        }
+    }
+
+    private List<String> queryStringListValues(SQLiteDb db, long pk) {
+        final List<String> values = new ArrayList<>();
+        final SQLiteStmt stmt = db.prepare("SELECT value FROM all_types_string_list_values WHERE all_types_id = ?;");
+        try {
+            stmt.bindLong(1, pk);
+            final SQLiteCursor cursor = stmt.executeQuery();
+            while (cursor.step()) {
+                values.add(cursor.getColumnString(0))
+            }
+        } finally {
+            stmt.close();
+        }
+        return values;
     }
 }

@@ -1,6 +1,14 @@
 Change Log
 ==========
 
+RxSQLite 3.2.0 *(2016-03-19)*
+-----------------------------
+
+@SQLiteStringList support for save List<String> values
+
+RxSQLite.rawQuery support
+
+
 RxSQLite 3.1.1 *(2016-03-18)*
 -----------------------------
 

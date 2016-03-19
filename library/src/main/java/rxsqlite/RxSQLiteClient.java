@@ -26,6 +26,7 @@ import rx.functions.Action1;
 import rx.functions.Action3;
 import rx.functions.Func0;
 import rx.functions.Func1;
+import rx.functions.Func2;
 import sqlite4a.SQLiteCursor;
 import sqlite4a.SQLiteDb;
 import sqlite4a.SQLiteStmt;
@@ -104,9 +105,14 @@ public class RxSQLiteClient implements Closeable {
         }
     }
 
+    @Override
+    public void close() {
+        close(mConnections);
+    }
+
     @NonNull
-    public <T> Observable<T> query(@NonNull final String sql, @NonNull final Iterable<Object> bindValues,
-                                   @NonNull final Func1<SQLiteCursor, T> factory) {
+    <T> Observable<T> query(@NonNull final String sql, @NonNull final Iterable<Object> bindValues,
+            @NonNull final Func2<SQLiteDb, SQLiteCursor, T> factory) {
         return Observable.create(new Observable.OnSubscribe<T>() {
             @Override
             public void call(Subscriber<? super T> subscriber) {
@@ -120,7 +126,7 @@ public class RxSQLiteClient implements Closeable {
                         }
                         final SQLiteCursor rows = stmt.executeQuery();
                         while (rows.step()) {
-                            subscriber.onNext(factory.call(rows));
+                            subscriber.onNext(factory.call(db, rows));
                         }
                         subscriber.onCompleted();
                     } finally {
@@ -134,7 +140,7 @@ public class RxSQLiteClient implements Closeable {
     }
 
     @NonNull
-    public <T> Observable<T> execute(@NonNull final Func1<SQLiteDb, Observable<T>> factory) {
+    <T> Observable<T> execute(@NonNull final Func1<SQLiteDb, Observable<T>> factory) {
         return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
@@ -149,7 +155,7 @@ public class RxSQLiteClient implements Closeable {
     }
 
     @NonNull
-    public <T> Observable<T> transaction(@NonNull final Func1<SQLiteDb, Observable<T>> factory) {
+    <T> Observable<T> transaction(@NonNull final Func1<SQLiteDb, Observable<T>> factory) {
         return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
@@ -167,11 +173,6 @@ public class RxSQLiteClient implements Closeable {
                 }
             }
         });
-    }
-
-    @Override
-    public void close() {
-        close(mConnections);
     }
 
     @Keep
@@ -338,7 +339,7 @@ public class RxSQLiteClient implements Closeable {
 
         @NonNull
         public Builder createFunction(@NonNull final String name, final int numArgs,
-                                      final Func1<SQLiteValue[], Object> func) {
+                final Func1<SQLiteValue[], Object> func) {
             return doOnOpen(new Action1<SQLiteDb>() {
                 @Override
                 public void call(SQLiteDb db) {

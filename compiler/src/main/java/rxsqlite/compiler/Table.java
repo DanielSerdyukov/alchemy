@@ -62,35 +62,42 @@ class Table {
         return type.getSimpleName() + CLASS_SUFFIX;
     }
 
+    static void checkAnnotatedWithSQLiteObject(Element element) {
+        if (element.getAnnotation(SQLiteObject.class) == null) {
+            throw new IllegalArgumentException("not annotated with @" + SQLiteObject.class.getCanonicalName());
+        }
+    }
+
     void parseSQLiteObject(Element element) throws Exception {
         final SQLiteObject annotation = element.getAnnotation(SQLiteObject.class);
         mTableName = annotation.value();
         mDefinitions.add("\", " + Utils.join(", ", annotation.constraints()) + "\"");
     }
 
-    void parseSQLitePk(Element element) throws Exception {
-        final TypeMirror type = element.asType();
+    void parseSQLitePk(Element field) throws Exception {
+        checkAnnotatedWithSQLiteObject(field.getEnclosingElement());
+        final TypeMirror type = field.asType();
         final TypeKind kind = type.getKind();
         if (TypeKind.LONG != kind) {
             throw new IllegalArgumentException("Primary key must be 'long'");
         }
-        Utils.setAccessible(element);
-        final SQLitePk annotation = element.getAnnotation(SQLitePk.class);
+        Utils.setAccessible(field);
+        final SQLitePk annotation = field.getAnnotation(SQLitePk.class);
         String constraint = annotation.constraint();
         if (!Utils.isEmpty(constraint)) {
             constraint = " " + constraint;
         }
         mDefinitions.add("\"_id INTEGER PRIMARY KEY" + constraint + "\"");
-        mColumnTypes.put(element.getSimpleName().toString(), type);
-        mColumnNames.put("_id", element.getSimpleName().toString());
+        mColumnTypes.put(field.getSimpleName().toString(), type);
+        mColumnNames.put("_id", field.getSimpleName().toString());
         mHasPrimaryKey = true;
     }
 
-    void parseSQLiteColumn(Element element) throws Exception {
-        Utils.setAccessible(element);
-        final SQLiteColumn annotation = element.getAnnotation(SQLiteColumn.class);
-        final String fieldName = element.getSimpleName().toString();
-        final TypeMirror type = element.asType();
+    void parseSQLiteColumn(Element field) throws Exception {
+        checkAnnotatedWithSQLiteObject(field.getEnclosingElement());
+        final SQLiteColumn annotation = field.getAnnotation(SQLiteColumn.class);
+        final String fieldName = field.getSimpleName().toString();
+        final TypeMirror type = field.asType();
         String columnName = annotation.value();
         if (Utils.isEmpty(columnName)) {
             columnName = Utils.getColumnName(fieldName);
@@ -100,23 +107,39 @@ class Table {
             constraint = " " + constraint;
         }
         addColumnDefinition(fieldName, columnName, constraint, type);
-
         if (annotation.index()) {
             addIndexDefinition(columnName, annotation.unique());
         }
+        Utils.setAccessible(field);
     }
 
     void parseSQLiteRelation(Element field) throws Exception {
+        checkAnnotatedWithSQLiteObject(field.getEnclosingElement());
         final Element[] elements = new Element[2];
         Utils.resolve(field.asType(), elements);
         if (elements[1] != null) {
             if (Utils.isAssignable(elements[0], List.class)) {
+                Utils.setAccessible(field);
                 mRelations.add(new OneToMany(mTableName, field, elements[1]));
             } else {
                 throw new IllegalArgumentException("One to many relation supports only by java.lang.List");
             }
         } else {
+            Utils.setAccessible(field);
             mRelations.add(new OneToOne(mTableName, field, elements[0]));
+        }
+    }
+
+    void parseSQLiteStringList(Element field) {
+        checkAnnotatedWithSQLiteObject(field.getEnclosingElement());
+        final Element[] elements = new Element[2];
+        Utils.resolve(field.asType(), elements);
+        if (elements[1] != null && Utils.isAssignable(elements[0], List.class)
+                && Utils.isAssignable(elements[1], String.class)) {
+            Utils.setAccessible(field);
+            mRelations.add(new StringList(mTableName, field));
+        } else {
+            throw new IllegalArgumentException("Supports only java.lang.List<java.lang.String>");
         }
     }
 

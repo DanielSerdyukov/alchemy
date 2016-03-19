@@ -1,10 +1,12 @@
 package rxsqlite.model;
 
 import java.util.Date;
+import java.util.List;
 
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
+import rxsqlite.annotation.SQLiteStringList;
 
 @SQLiteObject("all_types")
 public class AllTypes {
@@ -38,6 +40,9 @@ public class AllTypes {
 
     @SQLiteColumn
     private EnumType mColumnEnum = EnumType.TEST;
+
+    @SQLiteStringList
+    private List<String> mStringList;
 
     enum EnumType {
         TEST

@@ -19,6 +19,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import rx.Observable;
 import rx.Subscriber;
@@ -38,11 +39,15 @@ import sqlite4a.SQLiteValue;
 @SuppressWarnings("TryFinallyCanBeTryWithResources")
 public class RxSQLiteClient implements Closeable {
 
+    static final int OPEN_NOMUTEX = 0x00008000;
+
+    static final int OPEN_FULLMUTEX = 0x00010000;
+
+    private static final String MEMORY = ":memory:";
+
     private static final String APP_MAIN_DB = "main.db";
 
-    private static final String SHARED_MEMORY = "file::memory:?cache=shared";
-
-    private final Queue<SQLiteDb> mConnections = new ConcurrentLinkedQueue<>();
+    private final Queue<SQLiteDb> mReadableConnections = new ConcurrentLinkedQueue<>();
 
     private final ConcurrentMap<Class<?>, RxSQLiteTable<?>> mTables = new ConcurrentHashMap<>();
 
@@ -61,6 +66,10 @@ public class RxSQLiteClient implements Closeable {
 
     private final Types mTypes;
 
+    private final ReentrantLock mPrimaryLock = new ReentrantLock();
+
+    private volatile SQLiteDb mPrimaryDb;
+
     private RxSQLiteClient(@NonNull Builder builder) {
         this(builder, new Types(builder.mTypes));
     }
@@ -78,7 +87,7 @@ public class RxSQLiteClient implements Closeable {
 
     @NonNull
     public static Builder memory() {
-        return new Builder(SHARED_MEMORY, SQLiteDb.OPEN_READWRITE | SQLiteDb.OPEN_CREATE | SQLiteDb.OPEN_URI, 1);
+        return new Builder(MEMORY, OPEN_FULLMUTEX, 1);
     }
 
     @NonNull
@@ -88,7 +97,7 @@ public class RxSQLiteClient implements Closeable {
 
     @NonNull
     public static Builder builder(@NonNull File path, @IntRange(from = 1) int version) {
-        return builder(path, SQLiteDb.OPEN_READWRITE | SQLiteDb.OPEN_CREATE, version);
+        return builder(path, OPEN_NOMUTEX, version);
     }
 
     @NonNull
@@ -107,7 +116,7 @@ public class RxSQLiteClient implements Closeable {
 
     @Override
     public void close() {
-        close(mConnections);
+        close(mReadableConnections);
     }
 
     @NonNull
@@ -116,7 +125,7 @@ public class RxSQLiteClient implements Closeable {
         return Observable.create(new Observable.OnSubscribe<T>() {
             @Override
             public void call(Subscriber<? super T> subscriber) {
-                final SQLiteDb db = acquireDatabase(mConnections);
+                final SQLiteDb db = acquireDatabase(false);
                 try {
                     final SQLiteStmt stmt = db.prepare(sql);
                     try {
@@ -133,7 +142,7 @@ public class RxSQLiteClient implements Closeable {
                         stmt.close();
                     }
                 } finally {
-                    releaseDatabase(mConnections, db);
+                    releaseDatabase(db, false);
                 }
             }
         });
@@ -144,11 +153,11 @@ public class RxSQLiteClient implements Closeable {
         return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
-                final SQLiteDb db = acquireDatabase(mConnections);
+                final SQLiteDb db = acquireDatabase(true);
                 try {
                     return factory.call(db);
                 } finally {
-                    releaseDatabase(mConnections, db);
+                    releaseDatabase(db, true);
                 }
             }
         });
@@ -159,7 +168,7 @@ public class RxSQLiteClient implements Closeable {
         return Observable.defer(new Func0<Observable<T>>() {
             @Override
             public Observable<T> call() {
-                final SQLiteDb db = acquireDatabase(mConnections);
+                final SQLiteDb db = acquireDatabase(true);
                 try {
                     db.begin();
                     final Observable<T> observable = factory.call(db);
@@ -169,7 +178,7 @@ public class RxSQLiteClient implements Closeable {
                     db.rollback();
                     return Observable.error(e);
                 } finally {
-                    releaseDatabase(mConnections, db);
+                    releaseDatabase(db, true);
                 }
             }
         });
@@ -228,16 +237,7 @@ public class RxSQLiteClient implements Closeable {
     @NonNull
     @VisibleForTesting
     SQLiteDb openAndConfigureDatabase() {
-        final SQLiteDb db = openDatabase(mDatabasePath, mOpenFlags);
-        dispatchDatabaseOpen(db);
-        final int version = getDatabaseVersion(db);
-        if (version == 0) {
-            dispatchDatabaseCreate(db);
-        } else if (mUserVersion > version) {
-            dispatchDatabaseUpgrade(db, version, mUserVersion);
-        }
-        setDatabaseVersion(db, mUserVersion);
-        return db;
+        return openDatabase(true);
     }
 
     @NonNull
@@ -245,7 +245,6 @@ public class RxSQLiteClient implements Closeable {
     SQLiteDb openDatabase(@NonNull String databasePath, @SQLiteDb.OpenFlags int flags) {
         return SQLiteDb.open(databasePath, flags);
     }
-
 
     @VisibleForTesting
     void dispatchDatabaseOpen(@NonNull SQLiteDb db) {
@@ -282,6 +281,52 @@ public class RxSQLiteClient implements Closeable {
             db.close();
         }
         connections.clear();
+    }
+
+    @NonNull
+    SQLiteDb openDatabase(boolean writable) {
+        int flags = mOpenFlags;
+        if (writable && (flags & SQLiteDb.OPEN_READONLY) == 0) {
+            flags |= (SQLiteDb.OPEN_READWRITE | SQLiteDb.OPEN_CREATE);
+        } else {
+            flags |= SQLiteDb.OPEN_READONLY;
+        }
+        final SQLiteDb db = openDatabase(mDatabasePath, flags);
+        dispatchDatabaseOpen(db);
+        if (writable) {
+            final int version = getDatabaseVersion(db);
+            if (version == 0) {
+                dispatchDatabaseCreate(db);
+            } else {
+                dispatchDatabaseUpgrade(db, version, mUserVersion);
+            }
+            setDatabaseVersion(db, mUserVersion);
+        }
+        return db;
+    }
+
+    @NonNull
+    SQLiteDb acquireDatabase(boolean writable) {
+        if (writable) {
+            mPrimaryLock.lock();
+            if (mPrimaryDb == null) {
+                mPrimaryDb = openDatabase(true);
+            }
+            return mPrimaryDb;
+        }
+        SQLiteDb db = mReadableConnections.poll();
+        if (db == null) {
+            return openDatabase(false);
+        }
+        return db;
+    }
+
+    void releaseDatabase(SQLiteDb db, boolean writable) {
+        if (writable && mPrimaryLock.getHoldCount() > 0) {
+            mPrimaryLock.unlock();
+        } else if (!mReadableConnections.offer(db)) {
+            db.close();
+        }
     }
 
     public static class Builder {

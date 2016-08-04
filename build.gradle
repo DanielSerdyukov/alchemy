@@ -4,49 +4,20 @@ subprojects { project ->
             jcenter()
         }
         dependencies {
-            classpath 'com.android.tools.build:gradle:2.1.0-alpha3'
-            classpath 'org.kt3k.gradle.plugin:coveralls-gradle-plugin:2.4.0'
+            classpath 'com.android.tools.build:gradle:2.2.0-alpha7'
             classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.6'
             classpath 'net.sf.proguard:proguard-gradle:5.2.1'
         }
     }
+}
 
+allprojects {
     repositories {
         jcenter()
+        mavenLocal()
     }
-}
-
-ext {
-    groupId = 'rxsqlite'
-    versionName = gitVersionName
-    versionCode = gitVersionCode
-}
-
-ext.deps = [
-        rxjava  : 'io.reactivex:rxjava:1.1.1',
-        sqlite4a: 'sqlite4a:library:3.2.0@aar',
-        junit   : 'junit:junit:4.12',
-        hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0'
-]
-
-def getGitVersionName() {
-    def tag = 'git describe --tags'.execute().text.split('-').first()?.trim()
-    if (tag =~ /^v.*$/) {
-        return tag.substring(1)
-    }
-    return '3.2.0'
-}
-
-int getGitVersionCode() {
-    def versionCode = 1
-    (gitVersionName =~ /(\d+)/).collect {
-        Integer.parseInt(it[0] as String)
-    }.eachWithIndex { num, index ->
-        versionCode += (num * (100000 / Math.pow(100, index)))
-    }
-    return versionCode
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.12'
+    gradleVersion = '2.14'
 }

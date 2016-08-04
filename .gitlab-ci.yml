@@ -1,15 +1,11 @@
-tests:
+debug:
   script:
-    - gradle clean testDebugUnitTest
-  tags:
-    - android
-  only:
-    - master
+    - ./gradlew clean testDebugUnitTest
+  except:
+    - /^v.*$/
 
-bintray_deploy:
+bintray:
   script:
-    - gradle clean :library:assembleRelease :compiler:assemble :compiler:proguard publishToMavenLocal bintrayUpload
-  tags:
-    - android
+    - ./gradlew clean assembleRelease publishMavenAndroidPublicationToMavenLocal bintrayUpload
   only:
     - /^v.*$/

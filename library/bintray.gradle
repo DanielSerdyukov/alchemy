@@ -1,8 +1,8 @@
 apply plugin: 'com.jfrog.bintray'
 apply plugin: 'maven-publish'
 
-group = rootProject.ext.groupId
-version = rootProject.ext.versionName
+group = pJcenterGroup
+version = pVersionName
 
 task sourcesJar(type: Jar) {
     from files('src/main/java')
@@ -65,8 +65,8 @@ bintray {
         name = 'rxsqlite'
         licenses = ['Apache-2.0']
         version {
-            name = rootProject.ext.versionName
-            vcsTag = rootProject.ext.versionName
+            name = pVersionName
+            vcsTag = pVersionName
         }
     }
 }

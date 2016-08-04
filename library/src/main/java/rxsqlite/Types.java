@@ -1,39 +1,23 @@
 package rxsqlite;
 
-import android.support.annotation.IntRange;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.annotation.VisibleForTesting;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.Collection;
-import java.util.Collections;
-
-import sqlite4a.SQLiteCursor;
-import sqlite4a.SQLiteStmt;
+import rxsqlite.bindings.RxSQLiteCursor;
+import rxsqlite.bindings.RxSQLiteStmt;
 
 /**
  * @author Daniel Serdyukov
  */
 class Types {
 
-    private final Collection<RxSQLiteType> mTypes;
+    private static final Map<Class<?>, SQLiteType> TYPES = new HashMap<>();
 
-    Types(@NonNull Collection<RxSQLiteType> types) {
-        mTypes = Collections.unmodifiableCollection(types);
+    static void create(Class<?> clazz, SQLiteType type) {
+        TYPES.put(clazz, type);
     }
 
-    @NonNull
-    String getType(Class<?> type) {
-        for (final RxSQLiteType customType : mTypes) {
-            if (customType.isAssignable(type)) {
-                return customType.getType(type);
-            }
-        }
-        throw new IllegalArgumentException("Unsupported type " + type);
-    }
-
-    @SuppressWarnings("checkstyle:cyclomaticcomplexity")
-    void bindValue(@NonNull SQLiteStmt stmt, @IntRange(from = 1) int index, @Nullable Object value) {
+    static void bindValue(RxSQLiteStmt stmt, int index, Object value) {
         if (value == null) {
             stmt.bindNull(index);
         } else if (value instanceof Integer || value instanceof Long
@@ -51,42 +35,40 @@ class Types {
             }
         } else if (value instanceof byte[]) {
             stmt.bindBlob(index, (byte[]) value);
+        } else if (value instanceof Enum) {
+            stmt.bindString(index, ((Enum) value).name());
         } else {
-            bindCustomValue(stmt, index, value);
+            findType(value.getClass()).bind(stmt, index, value);
         }
     }
 
-    @Nullable
-    <T> T getValue(@NonNull SQLiteCursor row, @IntRange(from = 1) int index, @NonNull Class<T> type) {
-        for (final RxSQLiteType customType : mTypes) {
-            if (customType.isAssignable(type)) {
-                return customType.getValue(row, index);
+    @SuppressWarnings("unchecked")
+    static Object getValue(RxSQLiteCursor cursor, int index, Class clazz) {
+        if (Enum.class.isAssignableFrom(clazz)) {
+            final String value = cursor.getColumnString(index);
+            if (value != null && !value.isEmpty()) {
+                return Enum.valueOf(clazz, value);
+            }
+            return null;
+        }
+        return findType(clazz).get(cursor, index);
+    }
+
+    static SQLiteType findType(Class<?> clazz) {
+        final SQLiteType type = TYPES.get(clazz);
+        if (type != null) {
+            return type;
+        }
+        for (final Map.Entry<Class<?>, SQLiteType> entry : TYPES.entrySet()) {
+            if (entry.getKey().isAssignableFrom(clazz)) {
+                return entry.getValue();
             }
         }
-        throw new IllegalArgumentException("Unsupported type " + type);
+        throw new IllegalArgumentException("Unsupported type " + clazz);
     }
 
-    @Nullable
-    <T extends Enum<T>> T getEnumValue(@NonNull SQLiteCursor row, @IntRange(from = 1) int index,
-                                       @NonNull Class<T> type) {
-        final String value = row.getColumnString(index);
-        if (value != null) {
-            return Enum.valueOf(type, value);
-        }
-        return null;
+    static void clear() {
+        TYPES.clear();
     }
-
-    @VisibleForTesting
-    void bindCustomValue(@NonNull SQLiteStmt stmt, @IntRange(from = 1) int index, @NonNull Object value) {
-        final Class<?> type = value.getClass();
-        for (final RxSQLiteType customType : mTypes) {
-            if (customType.isAssignable(type)) {
-                customType.bindValue(stmt, index, value);
-                return;
-            }
-        }
-        throw new IllegalArgumentException("Unsupported type " + type);
-    }
-
 
 }

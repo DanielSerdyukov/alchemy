@@ -6,27 +6,22 @@ apply plugin: 'java'
 sourceCompatibility = JavaVersion.VERSION_1_7
 targetCompatibility = JavaVersion.VERSION_1_7
 
-configurations {
-    testCompile.exclude group: 'com.android.support'
-}
-
 dependencies {
-    compile 'com.squareup:javapoet:1.5.1'
-    compile 'com.google.auto.service:auto-service:1.0-rc2'
-    compile 'com.google.auto:auto-common:0.5'
-    compile deps.rxjava
     compile files(Jvm.current().toolsJar)
-    testCompile fileTree(dir: 'libs', includes: ['*.jar'])
+    compile 'com.squareup:javapoet:1.7.0'
+    compile 'com.google.auto.service:auto-service:1.0-rc2'
+    compile 'com.google.auto:auto-common:0.6'
+    testCompile "rxsqlite:bindings:${pVersionName}"
     testCompile files('../library/build/intermediates/bundles/release/classes.jar')
     testCompile 'com.google.truth:truth:0.28'
-    testCompile 'com.google.testing.compile:compile-testing:0.8'
+    testCompile 'com.google.testing.compile:compile-testing:0.9'
 }
 
 task proguard(type: ProGuardTask) {
     configuration 'proguard.pro'
 
-    injars "${project.buildDir}/libs/compiler-${rootProject.ext.versionName}.jar"
-    outjars "${project.buildDir}/libs/compiler-release-${rootProject.ext.versionName}.jar"
+    injars "${project.buildDir}/libs/compiler-${pVersionName}.jar"
+    outjars "${project.buildDir}/libs/compiler-release-${pVersionName}.jar"
 
     libraryjars Jvm.current().runtimeJar.absolutePath
     libraryjars Jvm.current().toolsJar.absolutePath
@@ -35,6 +30,14 @@ task proguard(type: ProGuardTask) {
     printusage "${project.buildDir}/tmp/usage.txt"
     dump "${project.buildDir}/tmp/dump.txt"
 }
+
+task copyTestResources(type: Copy) {
+    from "${projectDir}/src/test/resources"
+    into "${buildDir}/classes/test"
+}
+
+compileJava.dependsOn ':library:assembleRelease'
+processTestResources.dependsOn 'copyTestResources'
 
 if (project.hasProperty('bintrayUser')) {
     apply from: 'bintray.gradle'

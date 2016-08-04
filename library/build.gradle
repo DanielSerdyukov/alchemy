@@ -1,25 +1,32 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion "23.0.2"
+    compileSdkVersion Integer.parseInt(pCompileSdkVersion)
+    buildToolsVersion pBuildToolsVersion
 
     defaultConfig {
-        minSdkVersion 15
-        targetSdkVersion 23
-        versionCode rootProject.ext.versionCode
-        versionName rootProject.ext.versionName
+        minSdkVersion Integer.parseInt(pMinSdkVersion)
+        targetSdkVersion Integer.parseInt(pCompileSdkVersion)
+        versionCode 1
+        versionName pVersionName
+        consumerProguardFiles 'proguard-consumer.pro'
     }
 
     buildTypes {
-        debug {
-            testCoverageEnabled true
-            buildConfigField 'int', 'TEST_SDK', '21'
-        }
         release {
-            minifyEnabled true
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard.pro'
         }
+    }
+
+    libraryVariants.all { variant ->
+        int versionCode = 0
+        (pVersionName =~ /(\d+)/).collect {
+            Integer.parseInt(it[0] as String)
+        }.take(4).eachWithIndex { num, index ->
+            versionCode += (num * Math.max(1, (1000000 / Math.pow(100, index))))
+        }
+        variant.mergedFlavor.versionCode = versionCode
     }
 
     compileOptions {
@@ -27,31 +34,18 @@ android {
         targetCompatibility JavaVersion.VERSION_1_7
     }
 
-    testOptions {
-        unitTests {
-            all {
-                jvmArgs '-noverify'
-            }
-        }
-    }
+    testOptions { unitTests { all { jvmArgs '-noverify' } } }
 }
 
 dependencies {
-    compile 'com.android.support:support-annotations:23.2.1'
-    compile deps.sqlite4a
-    compile deps.rxjava
-    testCompile(deps.junit) {
-        exclude group: 'org.hamcrest'
-    }
-    testCompile('org.mockito:mockito-all:1.10.19') {
-        exclude group: 'org.hamcrest'
-    }
-    testCompile deps.hamcrest
-    testCompile 'org.powermock:powermock-api-mockito:1.6.4'
-    testCompile 'org.powermock:powermock-module-junit4:1.6.4'
+    provided project(':bindings')
+    compile "com.android.support:support-annotations:${pSupportVersion}"
+    compile "io.reactivex:rxjava:${pRxJavaVersion}"
+    testCompile "junit:junit:${pJUnitVersion}"
+    testCompile "org.mockito:mockito-core:${pMockitoVersion}"
+    testCompile "org.hamcrest:java-hamcrest:${pHamcrestVersion}"
 }
 
-apply from: 'jacoco.gradle'
 if (project.hasProperty('bintrayUser')) {
     apply from: 'bintray.gradle'
 }

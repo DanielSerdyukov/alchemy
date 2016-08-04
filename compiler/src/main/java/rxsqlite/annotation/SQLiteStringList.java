@@ -7,7 +7,9 @@ import java.lang.annotation.Target;
 
 /**
  * @author Daniel Serdyukov
+ * @deprecated and will be removed in next release
  */
+@Deprecated
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
 public @interface SQLiteStringList {

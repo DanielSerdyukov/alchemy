@@ -17,3 +17,4 @@ public @interface SQLiteObject {
     String[] constraints() default {};
 
 }
+

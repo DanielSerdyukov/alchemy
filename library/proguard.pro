@@ -4,13 +4,10 @@
 
 -keep public class rxsqlite.** {
     public static <fields>;
-    public static <methods>;
     public <methods>;
-    protected <methods>;
-    native <methods>;
 }
 
--keep class rxsqlite.RxSQLiteClient {
-    void registerTable(java.lang.Class, rxsqlite.RxSQLiteTable);
+-keep class rxsqlite.SQLiteTable {
+    public <methods>;
+    protected <methods>;
 }
--keep class rxsqlite.Types { *; }

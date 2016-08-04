@@ -1,29 +1,14 @@
 package rxsqlite.compiler;
 
-import com.sun.source.util.Trees;
-import com.sun.tools.javac.code.Flags;
-import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.TreeTranslator;
-
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementScanner7;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.SimpleTypeVisitor7;
-import javax.lang.model.util.Types;
 
 /**
  * @author Daniel Serdyukov
@@ -35,43 +20,7 @@ class Utils {
             Pattern.compile("^([a-z][a-zA-Z0-9]*)$")
     );
 
-    private static Types sTypes;
-
-    private static Elements sElements;
-
-    private static Trees sTrees;
-
-    static void init(ProcessingEnvironment processingEnv) {
-        sTypes = processingEnv.getTypeUtils();
-        sElements = processingEnv.getElementUtils();
-        sTrees = Trees.instance(processingEnv);
-    }
-
-    static boolean isEmpty(String str) {
-        return str == null || str.length() == 0;
-    }
-
-    static String join(String glue, Iterable<String> tokens) {
-        final StringBuilder sb = new StringBuilder(128);
-        final Iterator<String> iterator = tokens.iterator();
-        while (iterator.hasNext()) {
-            sb.append(iterator.next());
-            if (iterator.hasNext()) {
-                sb.append(glue);
-            }
-        }
-        return sb.toString();
-    }
-
-    static String join(String glue, String[] tokens) {
-        return join(glue, Arrays.asList(tokens));
-    }
-
-    static String getColumnName(String fieldName) {
-        return toUnderScope(getCanonicalName(fieldName));
-    }
-
-    static String getCanonicalName(String fieldName) {
+    static String normalize(String fieldName) {
         for (final Pattern pattern : NAMING) {
             final Matcher matcher = pattern.matcher(fieldName);
             if (matcher.matches()) {
@@ -81,8 +30,40 @@ class Utils {
         return fieldName;
     }
 
-    static String toUnderScope(String fieldName) {
-        return fieldName.replaceAll("(.)(\\p{Upper})", "$1_$2").toLowerCase();
+    static boolean equals(Object var0, Object var1) {
+        return var0 == var1 || var0 != null && var0.equals(var1);
+    }
+
+    static boolean isEmpty(String string) {
+        return string == null || string.isEmpty();
+    }
+
+    static String toUnderScope(String value) {
+        return value.replaceAll("(.)(\\p{Upper})", "$1_$2").toLowerCase();
+    }
+
+    static String join(Iterable<?> columnDefs, String glue, String decor) {
+        final StringBuilder sb = new StringBuilder();
+        final Iterator<?> iterator = columnDefs.iterator();
+        while (iterator.hasNext()) {
+            sb.append(decor).append(iterator.next()).append(decor);
+            if (iterator.hasNext()) {
+                sb.append(glue);
+            }
+        }
+        return sb.toString();
+    }
+
+    static String join(Iterable<?> columnDefs, String glue) {
+        final StringBuilder sb = new StringBuilder();
+        final Iterator<?> iterator = columnDefs.iterator();
+        while (iterator.hasNext()) {
+            sb.append(iterator.next());
+            if (iterator.hasNext()) {
+                sb.append(glue);
+            }
+        }
+        return sb.toString();
     }
 
     static boolean isLongType(TypeMirror type) {
@@ -110,52 +91,6 @@ class Utils {
             return TypeKind.BYTE == arrayType.getComponentType().getKind();
         }
         return false;
-    }
-
-    static boolean isEnumType(TypeMirror type) {
-        return TypeKind.DECLARED == type.getKind() &&
-                ElementKind.ENUM == sElements.getTypeElement(type.toString()).getKind();
-    }
-
-    static void setAccessible(Element element) {
-        element.accept(new ElementScanner7<Void, Void>() {
-            @Override
-            public Void visitVariable(VariableElement e, Void unused) {
-                ((JCTree) sTrees.getTree(e)).accept(new TreeTranslator() {
-                    @Override
-                    public void visitVarDef(JCTree.JCVariableDecl jcVariableDecl) {
-                        super.visitVarDef(jcVariableDecl);
-                        jcVariableDecl.mods.flags &= ~Flags.PRIVATE;
-                        this.result = jcVariableDecl;
-                    }
-                });
-                return super.visitVariable(e, unused);
-            }
-        }, null);
-    }
-
-    static void resolve(TypeMirror mirror, final Element[] resolution) {
-        mirror.accept(new SimpleTypeVisitor7<Void, Void>() {
-            @Override
-            public Void visitDeclared(DeclaredType t, Void o) {
-                resolution[0] = t.asElement();
-                final List<? extends TypeMirror> types = t.getTypeArguments();
-                if (!types.isEmpty()) {
-                    resolution[1] = types.get(0).accept(new SimpleTypeVisitor7<Element, Void>() {
-                        @Override
-                        public Element visitDeclared(DeclaredType t, Void aVoid) {
-                            return t.asElement();
-                        }
-                    }, null);
-                }
-                return null;
-            }
-        }, null);
-    }
-
-    static boolean isAssignable(Element element, Class<?> type) {
-        final TypeElement typeElement = sElements.getTypeElement(type.getCanonicalName());
-        return typeElement != null && sTypes.isAssignable(element.asType(), typeElement.asType());
     }
 
 }

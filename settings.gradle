@@ -1,1 +1,1 @@
-include ':library', ':compiler'
+include ':library', ':bindings', ':compiler'

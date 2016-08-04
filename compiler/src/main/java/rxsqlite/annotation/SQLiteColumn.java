@@ -14,10 +14,10 @@ public @interface SQLiteColumn {
 
     String value() default "";
 
+    String type() default "";
+
     String constraint() default "";
 
     boolean index() default false;
-
-    boolean unique() default false;
 
 }

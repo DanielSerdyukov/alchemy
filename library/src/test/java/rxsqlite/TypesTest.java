@@ -10,12 +10,12 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.runners.MockitoJUnitRunner;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Date;
 
-import sqlite4a.SQLiteCursor;
-import sqlite4a.SQLiteStmt;
+import rxsqlite.bindings.RxSQLiteCursor;
+import rxsqlite.bindings.RxSQLiteStmt;
 
 /**
  * @author Daniel Serdyukov
@@ -24,127 +24,130 @@ import sqlite4a.SQLiteStmt;
 public class TypesTest {
 
     @Mock
-    private SQLiteStmt mStmt;
+    private RxSQLiteStmt mStmt;
 
     @Mock
-    private SQLiteCursor mCursor;
-
-    private Types mTypes;
+    private RxSQLiteCursor mCursor;
 
     @Before
     public void setUp() throws Exception {
-        mTypes = new Types(Collections.<RxSQLiteType>emptyList());
+        Types.clear();
     }
 
     @Test
-    public void testGetType() throws Exception {
-        final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
-        Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        Mockito.doReturn("INTEGER").when(type).getType(Date.class);
-        final Types types = new Types(Arrays.asList(
-                Mockito.mock(RxSQLiteType.class),
-                Mockito.mock(RxSQLiteType.class),
-                type
-        ));
-        Assert.assertThat(types.getType(Date.class), Is.is("INTEGER"));
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testGetUnsupportedType() throws Exception {
-        new Types(Collections.<RxSQLiteType>emptyList()).getType(Date.class);
-    }
-
-    @Test
-    public void testGetValue() throws Exception {
-        final Date expected = new Date();
-        final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
-        Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        Mockito.doReturn(expected).when(type).getValue(mCursor, 1);
-        final Types types = new Types(Arrays.asList(
-                Mockito.mock(RxSQLiteType.class),
-                Mockito.mock(RxSQLiteType.class),
-                type
-        ));
-        Assert.assertThat(types.getValue(mCursor, 1, Date.class), Is.is(expected));
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testGetUnsupportedValue() throws Exception {
-        new Types(Collections.<RxSQLiteType>emptyList()).getValue(mCursor, 1, Bar.class);
-    }
-
-    @Test
-    public void testGetEnumValue() throws Exception {
-        Mockito.doReturn("VALUE").when(mCursor).getColumnString(1);
-        Assert.assertThat(mTypes.getEnumValue(mCursor, 1, Bar.class), Is.is(Bar.VALUE));
-
-        Mockito.doReturn(null).when(mCursor).getColumnString(1);
-        Assert.assertThat(mTypes.getEnumValue(mCursor, 1, Bar.class), IsNull.nullValue());
-    }
-
-    @Test
-    public void testBindNull() throws Exception {
-        mTypes.bindValue(mStmt, 1, null);
+    public void bindNull() throws Exception {
+        Types.bindValue(mStmt, 1, null);
         Mockito.verify(mStmt).bindNull(1);
     }
 
     @Test
-    public void testBindDouble() throws Exception {
-        mTypes.bindValue(mStmt, 2, 1.23);
-        Mockito.verify(mStmt).bindDouble(2, 1.23);
-        mTypes.bindValue(mStmt, 2, 4.56f);
-        Mockito.verify(mStmt).bindDouble(2, 4.56f);
+    public void bindInt() throws Exception {
+        Types.bindValue(mStmt, 1, 100);
+        Mockito.verify(mStmt).bindLong(1, 100);
     }
 
     @Test
-    public void testBindLong() throws Exception {
-        mTypes.bindValue(mStmt, 3, 100);
-        Mockito.verify(mStmt).bindLong(3, 100);
-        mTypes.bindValue(mStmt, 3, 200L);
-        Mockito.verify(mStmt).bindLong(3, 200L);
+    public void bindLong() throws Exception {
+        Types.bindValue(mStmt, 1, 1000L);
+        Mockito.verify(mStmt).bindLong(1, 1000L);
     }
 
     @Test
-    public void testBindBoolean() throws Exception {
-        mTypes.bindValue(mStmt, 4, true);
-        Mockito.verify(mStmt).bindLong(4, 1);
-        mTypes.bindValue(mStmt, 4, false);
-        Mockito.verify(mStmt).bindLong(4, 0);
+    public void bindShort() throws Exception {
+        Types.bindValue(mStmt, 1, (short) 10);
+        Mockito.verify(mStmt).bindLong(1, 10);
     }
 
     @Test
-    public void testBindString() throws Exception {
-        mTypes.bindValue(mStmt, 5, "test");
-        Mockito.verify(mStmt).bindString(5, "test");
+    public void bindDouble() throws Exception {
+        Types.bindValue(mStmt, 1, 1.23);
+        Mockito.verify(mStmt).bindDouble(1, 1.23);
     }
 
     @Test
-    public void testBindBlob() throws Exception {
-        mTypes.bindValue(mStmt, 5, new byte[]{1, 2, 3});
+    public void bindFloat() throws Exception {
+        Types.bindValue(mStmt, 1, 3.45f);
+        Mockito.verify(mStmt).bindDouble(1, 3.45f);
     }
 
     @Test
-    public void testBindCustom() throws Exception {
-        final Date expected = new Date();
-        final RxSQLiteType type = Mockito.mock(RxSQLiteType.class);
-        Mockito.doReturn(true).when(type).isAssignable(Date.class);
-        Mockito.doReturn(expected).when(type).getValue(mCursor, 1);
-        final Types types = new Types(Arrays.asList(
-                Mockito.mock(RxSQLiteType.class),
-                Mockito.mock(RxSQLiteType.class),
-                type
-        ));
-        types.bindValue(mStmt, 6, expected);
-        Mockito.verify(type).bindValue(mStmt, 6, expected);
+    public void bindString() throws Exception {
+        Types.bindValue(mStmt, 1, "test");
+        Mockito.verify(mStmt).bindString(1, "test");
+    }
+
+    @Test
+    public void bindTrue() throws Exception {
+        Types.bindValue(mStmt, 1, true);
+        Mockito.verify(mStmt).bindLong(1, 1);
+    }
+
+    @Test
+    public void bindFalse() throws Exception {
+        Types.bindValue(mStmt, 1, false);
+        Mockito.verify(mStmt).bindLong(1, 0);
+    }
+
+    @Test
+    public void bindBlob() throws Exception {
+        Types.bindValue(mStmt, 1, new byte[]{1, 2, 3});
+        Mockito.verify(mStmt).bindBlob(1, new byte[]{1, 2, 3});
+    }
+
+    @Test
+    public void bindEnum() throws Exception {
+        Types.bindValue(mStmt, 1, Role.ADMIN);
+        Mockito.verify(mStmt).bindString(1, Role.ADMIN.name());
+    }
+
+    @Test
+    public void bindCustomValue() throws Exception {
+        final SQLiteType type = Mockito.mock(SQLiteType.class);
+        Types.create(Date.class, type);
+        final Date value = new Date();
+        Types.bindValue(mStmt, 1, value);
+        Mockito.verify(type).bind(mStmt, 1, value);
+    }
+
+    @Test
+    public void bindCustomAssignableValue() throws Exception {
+        final SQLiteType type = Mockito.mock(SQLiteType.class);
+        Types.create(Number.class, type);
+        final BigDecimal value = new BigDecimal(1L);
+        Types.bindValue(mStmt, 1, value);
+        Mockito.verify(type).bind(mStmt, 1, value);
+    }
+
+    @Test
+    public void getEnumValue() throws Exception {
+        Mockito.doReturn("USER").when(mCursor).getColumnString(1);
+        Assert.assertThat(Types.getValue(mCursor, 1, Role.class), Is.<Object>is(Role.USER));
+
+        Mockito.doReturn(null).when(mCursor).getColumnString(2);
+        Assert.assertThat(Types.getValue(mCursor, 2, Role.class), IsNull.nullValue());
+    }
+
+    @Test
+    public void getCustomValue() throws Exception {
+        final SQLiteType type = Mockito.mock(SQLiteType.class);
+        Types.create(Date.class, type);
+        Types.getValue(mCursor, 1, Date.class);
+        Mockito.verify(type).get(mCursor, 1);
+    }
+
+    @Test
+    public void getCustomAssignableValue() throws Exception {
+        final SQLiteType type = Mockito.mock(SQLiteType.class);
+        Types.create(Number.class, type);
+        Types.getValue(mCursor, 1, BigInteger.class);
+        Mockito.verify(type).get(mCursor, 1);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testUnsupportedBindValue() throws Exception {
-        mTypes.bindValue(mStmt, 7, Bar.VALUE);
+    public void findUnsupportedType() throws Exception {
+        Types.findType(Void.class);
     }
 
-    enum Bar {
-        VALUE
-    }
+    enum Role {USER, ADMIN}
 
 }

@@ -1,4 +1,4 @@
-## RxSQLite [![Build Status](https://travis-ci.org/DanielSerdyukov/rxsqlite.svg?branch=master)](https://travis-ci.org/DanielSerdyukov/rxsqlite) [![Coverage Status](https://coveralls.io/repos/DanielSerdyukov/rxsqlite/badge.svg?branch=master&service=github)](https://coveralls.io/github/DanielSerdyukov/rxsqlite?branch=master) [![Apache License](https://img.shields.io/badge/license-Apache%20v2-blue.svg)](https://github.com/DanielSerdyukov/rxsqlite/blob/master/LICENSE)
+# RxSQLite [![Apache License](https://img.shields.io/badge/license-Apache%20v2-blue.svg)](https://github.com/DanielSerdyukov/rxsqlite/blob/master/LICENSE) [![Build Status](https://gitlab.exzogeni.com/android/rxsqlite/badges/master/build.svg)](https://github.com/DanielSerdyukov/rxsqlite)
 
 Reactive SQLite extension for Android
 
@@ -6,26 +6,21 @@ Reactive SQLite extension for Android
 
 ### Gradle
 ```groovy
-compile 'rxsqlite:library:3.2.0'
-provided 'rxsqlite:compiler:3.2.0'
+compile 'rxsqlite:library:4.0.0'
+compile 'rxsqlite:bindings-sqlite4a:4.0.0'
+provided 'rxsqlite:compiler:4.0.0'
 ```
 
 ### Configuration
 Add some code blocks in your ```Application``` class 
 ```java
-static {
-    SQLiteDb.loadLibrary(); // load native sqlite library
-}
-```
-```java
 @Override
 public void onCreate() {
     super.onCreate();
-    RxSQLite.register(RxSQLiteClient.builder(this, 1)
+    RxSQLite.init(this, SQLiteConfig.memory()
         .doOnOpen(db -> db.exec("PRAGMA case_sensitive_like = true;"))
-        .doOnCreate(db -> db.exec("CREATE TRIGGER...", null))
         .enableTracing() // debug logs in logcat
-        .build());
+        .build(this));
 }
 ```
 
@@ -33,7 +28,7 @@ public void onCreate() {
 
 #### Query objects
 ```java
-RxSQLite.query(User.class, new RxSQLiteWhere()
+RxSQLite.select(User.class, new Where()
     .between('age', 18, 25))
     .toList()
     .subscribe(users -> {
@@ -44,7 +39,7 @@ RxSQLite.query(User.class, new RxSQLiteWhere()
 #### Save objects
 ```java
 User user = ...
-RxSQLite.save(user)
+RxSQLite.insert(user)
     .subscribe(savedUser -> {
         showGreeting(savedUser);
     });
@@ -52,7 +47,7 @@ RxSQLite.save(user)
 ##### or save objects in one transaction
 ```java
 List<User> users = ...
-RxSQLite.saveAll(users)
+RxSQLite.insert(users)
     .subscribe(savedUsers -> {
         adapter.changeDataSet(savedUsesr)
     });
@@ -61,7 +56,7 @@ RxSQLite.saveAll(users)
 #### Delete objects
 ```java
 User user = ...
-RxSQLite.remove(user)
+RxSQLite.delete(user)
     .subscribe(affectedRows -> {
         
     });
@@ -69,7 +64,7 @@ RxSQLite.remove(user)
 ##### or delete objects in one transaction
 ```java
 List<User> users = ...
-RxSQLite.removeAll(users)
+RxSQLite.delete(users)
     .subscribe(affectedRows -> {
         
     });
@@ -77,7 +72,7 @@ RxSQLite.removeAll(users)
 
 #### Clear table
 ```java
-RxSQLite.clear(User.class, new RxSQLiteWhere()
+RxSQLite.delete(User.class, new Where()
     .equalTo('name', 'Joe'))
     .subscribe(affectedRows -> {
 

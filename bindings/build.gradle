@@ -1,0 +1,29 @@
+apply plugin: 'java'
+
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+configurations {
+    provided
+    compile.extendsFrom provided
+}
+
+dependencies {
+    provided files("${sdkDir}/platforms/android-${pCompileSdkVersion}/android.jar")
+    compile "io.reactivex:rxjava:${pRxJavaVersion}"
+}
+
+String getSdkDir() {
+    def sdk = System.getenv("ANDROID_HOME")
+    if (sdk == null) {
+        def properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newReader())
+        return properties.getProperty('sdk.dir')
+    } else {
+        return sdk
+    }
+}
+
+if (project.hasProperty('bintrayUser')) {
+    apply from: 'bintray.gradle'
+}

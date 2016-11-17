@@ -1,10 +1,10 @@
 -keepattributes Signature,Exceptions,InnerClasses,EnclosingMethod,*Annotation*
 
 -keep class rxsqlite.SQLite$$Schema {
-    public static void init();
+    public static final <fields>;
 }
 
--keep class * extends rxsqlite.SQLiteTable {
+-keep class * extends rxsqlite.RxSQLiteTable {
     public <methods>;
     protected <methods>;
 }

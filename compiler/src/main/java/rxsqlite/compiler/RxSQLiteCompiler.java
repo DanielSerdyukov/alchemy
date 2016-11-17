@@ -2,18 +2,15 @@ package rxsqlite.compiler;
 
 import com.google.auto.common.SuperficialValidation;
 import com.google.auto.service.AutoService;
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ArrayTypeName;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeName;
+import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeSpec;
-import com.squareup.javapoet.TypeVariableName;
+import com.sun.source.util.Trees;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -32,11 +29,11 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 
+import rxsqlite.RxSQLiteTable;
 import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
 import rxsqlite.annotation.SQLiteRelation;
-import rxsqlite.annotation.SQLiteStringList;
 
 /**
  * @author Daniel Serdyukov
@@ -49,15 +46,17 @@ public class RxSQLiteCompiler extends AbstractProcessor {
     private Filer mFiler;
 
     @Override
-    @SuppressWarnings("deprecation")
-    public synchronized void init(ProcessingEnvironment pEnv) {
-        super.init(pEnv);
-        mFiler = pEnv.getFiler();
-        mRules.put(SQLiteObject.class, new SQLiteObjectRule(pEnv));
-        mRules.put(SQLitePk.class, new SQLitePkRule(pEnv));
-        mRules.put(SQLiteColumn.class, new SQLiteColumnRule(pEnv));
-        mRules.put(SQLiteRelation.class, new SQLiteRelationRule(pEnv));
-        mRules.put(SQLiteStringList.class, new SQLiteStringListRule(pEnv));
+    public synchronized void init(ProcessingEnvironment env) {
+        super.init(env);
+        mFiler = env.getFiler();
+        mRules.put(SQLiteObject.class, new SQLiteObjectRule());
+        mRules.put(SQLitePk.class, new SQLitePkRule());
+        mRules.put(SQLiteColumn.class, new SQLiteColumnRule());
+        mRules.put(SQLiteRelation.class, new SQLiteRelationRule());
+
+        Literals.sTypes = env.getTypeUtils();
+        Literals.sElements = env.getElementUtils();
+        Literals.sTrees = Trees.instance(env);
     }
 
     @Override
@@ -79,114 +78,65 @@ public class RxSQLiteCompiler extends AbstractProcessor {
         if (annotations.isEmpty()) {
             return false;
         }
-        final Map<TypeElement, TableSpec> specs = new HashMap<>();
-        for (final Map.Entry<Class<? extends Annotation>, AnnotationRule> rule : mRules.entrySet()) {
-            final Set<? extends Element> elements = rEnv.getElementsAnnotatedWith(rule.getKey());
-            process(specs, elements, rule.getValue());
-        }
-        try {
-            writeJavaFile(makeAbstractTable());
-        } catch (Exception e) {
-            error(e);
-        }
-        final Map<TypeElement, JavaFile> tables = new HashMap<>();
-        for (final Map.Entry<TypeElement, TableSpec> entry : specs.entrySet()) {
-            try {
-                tables.put(entry.getKey(), writeJavaFile(new TableMaker(entry.getValue(), entry.getKey()).brewJava()));
-            } catch (Exception e) {
-                error(entry.getKey(), e);
+
+        final Map<TypeElement, TableSpec> specs = new LinkedHashMap<>();
+        for (final Map.Entry<Class<? extends Annotation>, AnnotationRule> entry : mRules.entrySet()) {
+            final Set<? extends Element> elements = rEnv.getElementsAnnotatedWith(entry.getKey());
+            for (final Element element : elements) {
+                if (!SuperficialValidation.validateElement(element)) {
+                    continue;
+                }
+                try {
+                    entry.getValue().process(specs, element);
+                } catch (Exception e) {
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), element);
+                }
             }
         }
-        try {
-            writeJavaFile(makeSQLiteSchema(tables));
-        } catch (Exception e) {
-            error(e);
+
+        final Map<TypeElement, JavaFile> javaFiles = new LinkedHashMap<>();
+        for (final Map.Entry<TypeElement, TableSpec> entry : specs.entrySet()) {
+            final TypeElement typeElement = entry.getKey();
+            final TableSpec tableSpec = entry.getValue();
+            try {
+                final JavaFile javaFile = new TableMaker(tableSpec).brewJavaFile();
+                javaFiles.put(typeElement, javaFile);
+                javaFile.writeTo(mFiler);
+            } catch (Exception e) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), typeElement);
+            }
         }
+
+        brewSchemaJava(javaFiles);
+
         return true;
     }
 
-    private void process(Map<TypeElement, TableSpec> specs, Set<? extends Element> elements,
-            AnnotationRule rule) {
-        for (final Element element : elements) {
-            if (!SuperficialValidation.validateElement(element)) {
-                continue;
+
+    private void brewSchemaJava(Map<TypeElement, JavaFile> tables) {
+        try {
+            final CodeBlock.Builder codeBlock = CodeBlock.builder();
+            for (final Map.Entry<TypeElement, JavaFile> entry : tables.entrySet()) {
+                final JavaFile javaFile = entry.getValue();
+                codeBlock.addStatement("TABLES.put($T.class, $T.INSTANCE)",
+                        ClassName.get(entry.getKey()), ClassName.get(javaFile.packageName, javaFile.typeSpec.name));
             }
-            try {
-                rule.process(TableSpec.make(specs, rule.getOriginType(element)), element, specs);
-            } catch (Exception e) {
-                error(element, e);
-            }
+            JavaFile.builder("rxsqlite", TypeSpec.classBuilder("SQLite$$Schema")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addField(FieldSpec.builder(ParameterizedTypeName.get(Map.class, Class.class, RxSQLiteTable.class),
+                            "TABLES",
+                            Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                            .initializer("new $T<>()", HashMap.class)
+                            .build())
+                    .addStaticBlock(codeBlock.build())
+                    .build())
+                    .addFileComment("Generated code from RxSQLite. Do not modify!")
+                    .skipJavaLangImports(true)
+                    .build()
+                    .writeTo(mFiler);
+        } catch (IOException e) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage());
         }
-    }
-
-    private JavaFile.Builder makeAbstractTable() throws Exception {
-        return JavaFile.builder(Consts.PACKAGE, TypeSpec.classBuilder(Consts.ABSTRACT_TABLE.simpleName())
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .addTypeVariable(Consts.T_VAR)
-                .superclass(Consts.generic(Consts.R_TABLE, "T"))
-                .addMethod(MethodSpec.constructorBuilder()
-                        .addModifiers(Modifier.PUBLIC)
-                        .addParameter(Consts.J_STRING, "name")
-                        .addParameter(ArrayTypeName.of(Consts.J_STRING), "columns")
-                        .addParameter(TypeName.BOOLEAN, "hasRelations")
-                        .addStatement("super(name, columns, hasRelations)")
-                        .build())
-                .build());
-    }
-
-    private JavaFile.Builder makeSQLiteSchema(Map<TypeElement, JavaFile> tables) throws Exception {
-        final TypeSpec.Builder schema = TypeSpec.classBuilder(Consts.SQLITE_SCHEMA.simpleName())
-                .addModifiers(Modifier.PUBLIC)
-                .addField(FieldSpec.builder(Consts.mapOf(Consts.J_CLASS_W, Consts.wildcard(Consts.R_TABLE)), "TABLES",
-                        Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                        .initializer("new $T<>()", Consts.J_HASH_MAP)
-                        .build());
-        final MethodSpec.Builder init = MethodSpec.methodBuilder("init")
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .returns(Consts.mapOf(Consts.J_CLASS_W, Consts.wildcard(Consts.R_TABLE)));
-        for (final Map.Entry<TypeElement, JavaFile> entry : tables.entrySet()) {
-            final JavaFile javaFile = entry.getValue();
-            init.addStatement("TABLES.put($T.class, new $T())", ClassName.get(entry.getKey()),
-                    ClassName.bestGuess(javaFile.packageName + "." + javaFile.typeSpec.name));
-        }
-        init.addStatement("return $T.unmodifiableMap(TABLES)", Consts.J_COLLECTIONS);
-        schema.addMethod(init.build());
-        final TypeVariableName typeVar = TypeVariableName.get("T");
-        schema.addMethod(MethodSpec.methodBuilder("findTable")
-                .addAnnotation(AnnotationSpec.builder(SuppressWarnings.class)
-                        .addMember("value", "$S", "unchecked")
-                        .build())
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                .addTypeVariable(typeVar)
-                .addParameter(Consts.generic(Consts.J_CLASS, typeVar), "clazz")
-                .returns(Consts.generic(Consts.ABSTRACT_TABLE, typeVar))
-                .addStatement("final $T table = TABLES.get(clazz)", Consts.wildcard(Consts.R_TABLE))
-                .beginControlFlow("if (table == null)")
-                .addStatement("throw new IllegalArgumentException($S + clazz)", "No such table for ")
-                .endControlFlow()
-                .addStatement("return ($T) table", Consts.generic(Consts.ABSTRACT_TABLE, typeVar))
-                .build());
-        return JavaFile.builder(Consts.PACKAGE, schema.build());
-    }
-
-    private JavaFile writeJavaFile(JavaFile.Builder builder) throws Exception {
-        final JavaFile javaFile = builder.skipJavaLangImports(true)
-                .addFileComment("Generated code from RxSQLite. Do not modify!")
-                .build();
-        javaFile.writeTo(mFiler);
-        return javaFile;
-    }
-
-    private void error(Element element, Exception e) {
-        final StringWriter stackTrace = new StringWriter();
-        e.printStackTrace(new PrintWriter(stackTrace));
-        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, stackTrace.toString(), element);
-    }
-
-    private void error(Exception e) {
-        final StringWriter stackTrace = new StringWriter();
-        e.printStackTrace(new PrintWriter(stackTrace));
-        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, stackTrace.toString());
     }
 
 }

@@ -1,7 +1,7 @@
 package rxsqlite;
 
-import org.hamcrest.core.Is;
 import org.hamcrest.core.IsCollectionContaining;
+import org.hamcrest.core.IsEqual;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,10 +38,15 @@ public class WhereTest {
                 .orderByDesc("c");
     }
 
+    @Test
+    public void whereIdIn() throws Exception {
+        Assert.assertThat(new Where().idIn(new long[]{1, 2, 3}).buildSelectSql(),
+                IsEqual.equalTo(" WHERE _id IN(1, 2, 3);"));
+    }
 
     @Test
-    public void testToSelectSql() throws Exception {
-        Assert.assertThat(mWhere.limit(10).buildSelectSql(), Is.is(" WHERE (a = ? AND b <> ?)"
+    public void buildSelectSql() throws Exception {
+        Assert.assertThat(mWhere.limit(10).buildSelectSql(), IsEqual.equalTo(" WHERE (a = ? AND b <> ?)"
                 + " OR (c < ? AND d <= ?)"
                 + " OR (e > ? AND f >= ?)"
                 + " OR (g IS NULL AND h NOT NULL)"
@@ -56,8 +61,8 @@ public class WhereTest {
     }
 
     @Test
-    public void testToSelectSqlWithOffset() throws Exception {
-        Assert.assertThat(mWhere.limit(5, 10).buildSelectSql(), Is.is(" WHERE (a = ? AND b <> ?)"
+    public void buildSelectSqlWithOffset() throws Exception {
+        Assert.assertThat(mWhere.limit(5, 10).buildSelectSql(), IsEqual.equalTo(" WHERE (a = ? AND b <> ?)"
                 + " OR (c < ? AND d <= ?)"
                 + " OR (e > ? AND f >= ?)"
                 + " OR (g IS NULL AND h NOT NULL)"
@@ -72,8 +77,8 @@ public class WhereTest {
     }
 
     @Test
-    public void testToDeleteSql() throws Exception {
-        Assert.assertThat(mWhere.buildDeleteSql(), Is.is(" WHERE (a = ? AND b <> ?)"
+    public void buildDeleteSql() throws Exception {
+        Assert.assertThat(mWhere.buildDeleteSql(), IsEqual.equalTo(" WHERE (a = ? AND b <> ?)"
                 + " OR (c < ? AND d <= ?)"
                 + " OR (e > ? AND f >= ?)"
                 + " OR (g IS NULL AND h NOT NULL)"
@@ -84,7 +89,7 @@ public class WhereTest {
     }
 
     @Test
-    public void testBindArgs() throws Exception {
+    public void getArgs() throws Exception {
         final Iterable<Object> values = mWhere.getArgs();
         Assert.assertThat(values, IsCollectionContaining.<Object>hasItems(
                 1, 2, 1.23, 4.56, 7.89, 8.90, 1, 2, 3, "Joe%", 100, 200, new byte[]{4, 4, 4}

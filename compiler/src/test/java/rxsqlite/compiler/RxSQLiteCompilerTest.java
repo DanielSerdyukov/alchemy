@@ -14,7 +14,7 @@ import java.util.Arrays;
 public class RxSQLiteCompilerTest {
 
     @Test
-    public void testGeneratedFiles() throws Exception {
+    public void generatedFiles() throws Exception {
         Truth.assertAbout(JavaSourcesSubjectFactory.javaSources())
                 .that(Arrays.asList(
                         JavaFileObjects.forResource("models/Foo.java"),
@@ -24,7 +24,6 @@ public class RxSQLiteCompilerTest {
                 .compilesWithoutError()
                 .and()
                 .generatesSources(
-                        JavaFileObjects.forResource("generated/AbstractTable.java"),
                         JavaFileObjects.forResource("generated/Foo$$Table.java"),
                         JavaFileObjects.forResource("generated/Bar$$Table.java"),
                         JavaFileObjects.forResource("generated/SQLite$$Schema.java")

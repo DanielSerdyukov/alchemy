@@ -1,66 +1,59 @@
 package rxsqlite;
 
-import android.support.annotation.NonNull;
-
-import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import rx.Observable;
 import rx.functions.Func1;
-import rx.subjects.Subject;
-import rxsqlite.bindings.RxSQLiteDb;
-import rxsqlite.bindings.RxSQLiteException;
+import sqlite4a.SQLiteDb;
 
 /**
  * @author Daniel Serdyukov
  */
 class SQLiteClient {
 
-    private final SQLitePool mPool;
+    final Map<Class, RxSQLiteTable> mTables = new HashMap<>();
 
-    private final Map<Class<?>, SQLiteTable<?>> mTables;
+    private final Pool mPool;
 
-    SQLiteClient(SQLitePool pool, Map<Class<?>, SQLiteTable<?>> tables) {
+    SQLiteClient(Pool pool) {
         mPool = pool;
-        mTables = tables;
     }
 
-    @NonNull
-    @SuppressWarnings("unchecked")
-    <T> SQLiteTable<T> findTable(Class<?> clazz) {
-        final SQLiteTable<?> table = mTables.get(clazz);
-        if (table == null) {
-            throw new RxSQLiteException("No such table for " + clazz);
+    <T> Iterable<T> insert(List<T> items) {
+        if (items.isEmpty()) {
+            return Collections.emptyList();
         }
-        return (SQLiteTable<T>) table;
-    }
-
-    @NonNull
-    <T> Collection<T> insert(@NonNull Collection<T> objects, @NonNull Subject<Class<?>, Class<?>> subject) {
-        final Class<?> clazz = objects.iterator().next().getClass();
-        final SQLiteTable<T> table = findTable(clazz);
-        RxSQLiteDb db = mPool.acquireDatabase(true);
-        final long[] rowIds;
+        final Class<?> type = items.get(0).getClass();
+        final RxSQLiteTable<T> table = findTable(type);
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(true);
         try {
-            rowIds = table.insert(db, objects);
-            if (rowIds.length > 0) {
-                subject.onNext(clazz);
+            try {
+                if (items.size() > 1 || table.hasRelations()) {
+                    db.begin();
+                }
+                final long[] rowIds = table.insert(db, items);
+                if (db.inTransaction()) {
+                    db.commit();
+                }
+                RxSQLite.notifyChange(type);
+                return table.select(db, rowIds);
+            } catch (Exception e) {
+                if (db.inTransaction()) {
+                    db.rollback();
+                }
+                throw new RxSQLiteException(e);
             }
         } finally {
             mPool.releaseDatabase(db);
         }
-        db = mPool.acquireDatabase(false);
-        try {
-            return table.select(db, rowIds);
-        } finally {
-            mPool.releaseDatabase(db);
-        }
     }
 
-    @NonNull
-    <T> Collection<T> select(@NonNull Class<T> type, @NonNull String where, @NonNull Iterable<Object> args) {
-        final SQLiteTable<T> table = findTable(type);
-        final RxSQLiteDb db = mPool.acquireDatabase(false);
+    <T> Iterable<T> select(Class<T> type, String where, Iterable<Object> args) {
+        final RxSQLiteTable<T> table = findTable(type);
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(false);
         try {
             return table.select(db, where, args);
         } finally {
@@ -68,60 +61,61 @@ class SQLiteClient {
         }
     }
 
-    @NonNull
-    <T> Collection<T> rawSelect(@NonNull Class<T> type, @NonNull String sql, @NonNull Iterable<Object> args) {
-        final SQLiteTable<T> table = findTable(type);
-        final RxSQLiteDb db = mPool.acquireDatabase(false);
-        try {
-            return table.rawSelect(db, sql, args);
-        } finally {
-            mPool.releaseDatabase(db);
+    <T> int delete(List<T> items) {
+        if (items.isEmpty()) {
+            return 0;
         }
-    }
-
-    <T> int delete(@NonNull Collection<T> objects, @NonNull Subject<Class<?>, Class<?>> subject) {
-        final Class<?> clazz = objects.iterator().next().getClass();
-        final SQLiteTable<T> table = findTable(clazz);
-        final long[] rowIds = new long[objects.size()];
-        int index = 0;
-        for (final T object : objects) {
-            rowIds[index] = table.getId(object);
-            ++index;
-        }
-        final RxSQLiteDb db = mPool.acquireDatabase(true);
+        final Class<?> type = items.get(0).getClass();
+        final RxSQLiteTable<T> table = findTable(type);
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(true);
         try {
-            final int affectedRows = table.delete(db, rowIds);
-            if (affectedRows > 0) {
-                subject.onNext(clazz);
+            try {
+                if (items.size() > 1 || table.hasRelations()) {
+                    db.begin();
+                }
+                final int affectedRows = table.delete(db, items);
+                if (db.inTransaction()) {
+                    db.commit();
+                }
+                RxSQLite.notifyChange(type);
+                return affectedRows;
+            } catch (Exception e) {
+                if (db.inTransaction()) {
+                    db.rollback();
+                }
+                throw new RxSQLiteException(e);
             }
-            return affectedRows;
         } finally {
             mPool.releaseDatabase(db);
         }
     }
 
-    int delete(@NonNull Class<?> type, @NonNull String where, @NonNull Iterable<Object> args,
-            @NonNull Subject<Class<?>, Class<?>> subject) {
-        final SQLiteTable<?> table = findTable(type);
-        final RxSQLiteDb db = mPool.acquireDatabase(true);
+    int delete(Class<?> type, String where, Iterable<Object> args) {
+        final RxSQLiteTable<?> table = findTable(type);
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(true);
         try {
-            final int affectedRows = table.delete(db, where, args);
-            if (affectedRows > 0) {
-                subject.onNext(type);
-            }
-            return affectedRows;
+            return table.delete(db, where, args);
         } finally {
             mPool.releaseDatabase(db);
         }
     }
 
-    <T> Observable<T> exec(@NonNull Func1<RxSQLiteDb, Observable<T>> func) {
-        final RxSQLiteDb db = mPool.acquireDatabase(true);
+    <T> Observable<T> exec(Func1<SQLiteDb, Observable<T>> factory) {
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(true);
         try {
-            return func.call(db);
+            return factory.call(db.mNativeDb);
         } finally {
             mPool.releaseDatabase(db);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> RxSQLiteTable<T> findTable(Class<?> type) {
+        final RxSQLiteTable<?> table = mTables.get(type);
+        if (table == null) {
+            throw new RxSQLiteException("No such table for " + type.getCanonicalName());
+        }
+        return (RxSQLiteTable<T>) table;
     }
 
 }

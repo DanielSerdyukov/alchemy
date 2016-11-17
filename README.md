@@ -7,7 +7,6 @@ Reactive SQLite extension for Android
 ### Gradle
 ```groovy
 compile 'rxsqlite:library:4.0.0'
-compile 'rxsqlite:bindings-sqlite4a:4.0.0'
 provided 'rxsqlite:compiler:4.0.0'
 ```
 
@@ -17,8 +16,9 @@ Add some code blocks in your ```Application``` class
 @Override
 public void onCreate() {
     super.onCreate();
+    SQLite4a.loadLibrary(this); // load native sqlite library
     RxSQLite.init(this, SQLiteConfig.memory()
-        .doOnOpen(db -> db.exec("PRAGMA case_sensitive_like = true;"))
+        .doOnOpen(rawDb -> rawDb.exec("PRAGMA case_sensitive_like = true;"))
         .enableTracing() // debug logs in logcat
         .build(this));
 }

@@ -1,5 +1,6 @@
-package rxsqlite.models.foo;
+package rxsqlite.model;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -7,55 +8,48 @@ import rxsqlite.annotation.SQLiteColumn;
 import rxsqlite.annotation.SQLiteObject;
 import rxsqlite.annotation.SQLitePk;
 import rxsqlite.annotation.SQLiteRelation;
-import rxsqlite.annotation.SQLiteStringList;
 import rxsqlite.model.bar.Bar;
 
-@SQLiteObject(value = "foo", constraints = "UNIQUE(key_1, key_2)")
+@SQLiteObject("foo")
 public class Foo {
 
     @SQLitePk
     private long mId;
 
     @SQLiteColumn
-    private double mCDouble;
+    private Long mLong;
 
-    @SQLiteColumn(constraint = "UNIQUE ON CONFLICT FAIL")
-    private String mUuid;
+    @SQLiteColumn("int_val")
+    private int mInt;
+
+    @SQLiteColumn(constraints = "UNIQUE")
+    private short mShort;
 
     @SQLiteColumn
-    private boolean mCBool;
+    private double mDouble;
 
     @SQLiteColumn
-    private byte[] mCBlob;
+    private float mFloat;
 
-    @SQLiteColumn(type = "INTEGER")
+    @SQLiteColumn
+    private byte[] mBytes;
+
+    @SQLiteColumn
+    private String mString;
+
+    @SQLiteColumn
     private Date mDate;
 
-    @SQLiteColumn(index = true)
-    private float mCFloat;
-
-    @SQLiteColumn("key_1")
-    private String mKey1;
-
-    @SQLiteColumn("key_2")
-    private int mKey2;
-
-    @SQLiteRelation(onDeleteCascade = false)
-    private Bar mOneToOneRel1;
+    @SQLiteColumn
+    private BigDecimal mBigDec;
 
     @SQLiteRelation
-    private Bar mOneToOneRel2;
+    private Bar mBar;
+
+    @SQLiteRelation(cascade = false)
+    private List<Bar> mBars;
 
     @SQLiteRelation
-    private List<Bar> mOneToManyRel;
-
-    @SQLiteRelation(onDeleteCascade = false)
-    private List<String> mStringRel1;
-
-    @SQLiteRelation
-    private List<String> mStringRel2;
-
-    @SQLiteStringList
-    private List<String> mFallbackStrings;
+    private List<String> mStrings;
 
 }

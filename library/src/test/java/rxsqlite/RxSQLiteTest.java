@@ -10,10 +10,10 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import rx.functions.Func1;
 import rx.observers.TestSubscriber;
+import sqlite4a.SQLiteDb;
+import sqlite4a.SQLiteException;
 
 /**
  * @author Daniel Serdyukov
@@ -22,112 +22,163 @@ import rx.observers.TestSubscriber;
 public class RxSQLiteTest {
 
     @Mock
-    private SQLiteClient mClient;
+    private Pool mPool;
+
+    @Mock
+    private RxSQLiteTable<Object> mTable;
+
+    private RxSQLiteDbImpl mDb;
 
     @Before
     public void setUp() throws Exception {
-        RxSQLite.setClient(mClient);
+        mDb = Mockito.spy(new TestRxSQLiteDb(Mockito.mock(SQLiteDb.class)));
+        Mockito.doReturn(mDb).when(mPool).acquireDatabase(Mockito.anyBoolean());
+        final SQLiteClient client = new SQLiteClient(mPool);
+        client.mTables.put(Object.class, mTable);
+        RxSQLite.sClient = client;
     }
 
     @Test
-    public void insertOne() throws Exception {
+    public void insertEmptyList() throws Exception {
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        final Object object = new Object();
-        RxSQLite.insert(object).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.insert(Collections.emptyList()).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).insert(Collections.singletonList(object), RxSQLite.ON_CHANGE);
+        subscriber.assertNoValues();
+        Mockito.verify(mPool, Mockito.never()).acquireDatabase(Mockito.anyBoolean());
     }
 
     @Test
-    public void insertCollection() throws Exception {
+    public void insertSingletonList() throws Exception {
+        final List<Object> items = Collections.singletonList(new Object());
+        final Object selected = new Object();
+        Mockito.doReturn(Collections.singletonList(selected)).when(mTable).insert(mDb, items);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        final List<Object> objects = Arrays.asList(new Object(), new Object());
-        RxSQLite.insert(objects).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.insert(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).insert(objects, RxSQLite.ON_CHANGE);
+        subscriber.assertValue(selected);
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb, Mockito.never()).begin();
+        Mockito.verify(mDb, Mockito.never()).commit();
+        Mockito.verify(mDb, Mockito.never()).rollback();
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
-    public void selectAll() throws Exception {
-        final Where where = new Where();
+    public void insertList() throws Exception {
+        final List<Object> items = Arrays.asList(new Object(), new Object());
+        final List<Object> selected = Arrays.asList(new Object(), new Object());
+        Mockito.doReturn(selected).when(mTable).insert(mDb, items);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        RxSQLite.select(Object.class).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.insert(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).select(Object.class, where.buildSelectSql(), where.getArgs());
+        subscriber.assertValues(selected.toArray());
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb).begin();
+        Mockito.verify(mDb).commit();
+        Mockito.verify(mDb, Mockito.never()).rollback();
+        Mockito.verify(mPool).releaseDatabase(mDb);
+    }
+
+    @Test
+    public void insertListRollback() throws Exception {
+        final List<Object> items = Arrays.asList(new Object(), new Object());
+        Mockito.doThrow(SQLiteException.class).when(mTable).insert(mDb, items);
+        final TestSubscriber<Object> subscriber = TestSubscriber.create();
+        RxSQLite.insert(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
+        subscriber.assertError(RxSQLiteException.class);
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb).begin();
+        Mockito.verify(mDb).rollback();
+        Mockito.verify(mDb, Mockito.never()).commit();
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
     public void selectWhere() throws Exception {
+        final List<Object> selected = Arrays.asList(new Object(), new Object());
         final Where where = new Where().equalTo("name", "test");
+        Mockito.doReturn(selected).when(mTable).select(mDb, where.buildSelectSql(), where.getArgs());
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
         RxSQLite.select(Object.class, where).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).select(Object.class, where.buildSelectSql(), where.getArgs());
+        subscriber.assertValues(selected.toArray());
+        Mockito.verify(mPool).acquireDatabase(false);
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
-    public void rawSelect() throws Exception {
-        final String sql = "SELECT * FROM test WHERE foo = ? AND bar = ?;";
+    public void deleteEmptyList() throws Exception {
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        RxSQLite.rawSelect(Object.class, sql, "test", 100L).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.delete(Collections.emptyList()).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).rawSelect(Object.class, sql, Arrays.<Object>asList("test", 100L));
+        subscriber.assertNoValues();
+        Mockito.verify(mPool, Mockito.never()).acquireDatabase(Mockito.anyBoolean());
     }
 
     @Test
-    public void deleteOne() throws Exception {
+    public void deleteSingletonList() throws Exception {
+        final List<Object> items = Collections.singletonList(new Object());
+        Mockito.doReturn(items.size()).when(mTable).delete(mDb, items);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        final Object object = new Object();
-        RxSQLite.delete(object).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.delete(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).delete(Collections.singletonList(object), RxSQLite.ON_CHANGE);
+        subscriber.assertValue(items.size());
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb, Mockito.never()).begin();
+        Mockito.verify(mDb, Mockito.never()).commit();
+        Mockito.verify(mDb, Mockito.never()).rollback();
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
-    public void deleteCollection() throws Exception {
+    public void deleteList() throws Exception {
+        final List<Object> items = Arrays.asList(new Object(), new Object());
+        Mockito.doReturn(items.size()).when(mTable).delete(mDb, items);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        final List<Object> objects = Arrays.asList(new Object(), new Object());
-        RxSQLite.delete(objects).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        RxSQLite.delete(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).delete(objects, RxSQLite.ON_CHANGE);
+        subscriber.assertValues(items.size());
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb).begin();
+        Mockito.verify(mDb).commit();
+        Mockito.verify(mDb, Mockito.never()).rollback();
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
-    public void deleteAll() throws Exception {
-        final Where where = new Where();
+    public void deleteListRollback() throws Exception {
+        final List<Object> items = Arrays.asList(new Object(), new Object());
+        Mockito.doThrow(SQLiteException.class).when(mTable).delete(mDb, items);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        RxSQLite.delete(Object.class).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
-        subscriber.assertNoErrors();
-        Mockito.verify(mClient).delete(Object.class, where.buildSelectSql(), where.getArgs(), RxSQLite.ON_CHANGE);
+        RxSQLite.delete(items).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
+        subscriber.assertError(RxSQLiteException.class);
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mDb).begin();
+        Mockito.verify(mDb).rollback();
+        Mockito.verify(mDb, Mockito.never()).commit();
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
     @Test
     public void deleteWhere() throws Exception {
         final Where where = new Where().equalTo("name", "test");
+        Mockito.doReturn(5).when(mTable).delete(mDb, where.buildSelectSql(), where.getArgs());
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
         RxSQLite.delete(Object.class, where).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
+        subscriber.awaitTerminalEvent();
         subscriber.assertNoErrors();
-        Mockito.verify(mClient).delete(Object.class, where.buildSelectSql(), where.getArgs(), RxSQLite.ON_CHANGE);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void exec() throws Exception {
-        final Func1 func = Mockito.mock(Func1.class);
-        final TestSubscriber<Object> subscriber = TestSubscriber.create();
-        RxSQLite.exec(func).subscribe(subscriber);
-        subscriber.awaitTerminalEvent(1, TimeUnit.SECONDS);
-        subscriber.assertNoErrors();
-        Mockito.verify(mClient).exec(func);
+        subscriber.assertValues(5);
+        Mockito.verify(mPool).acquireDatabase(true);
+        Mockito.verify(mPool).releaseDatabase(mDb);
     }
 
 }

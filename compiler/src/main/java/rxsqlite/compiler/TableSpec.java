@@ -1,58 +1,88 @@
 package rxsqlite.compiler;
 
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.ClassName;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
 
 /**
  * @author Daniel Serdyukov
  */
 class TableSpec {
 
-    final List<String> constraints = new ArrayList<>();
+    private final List<ColumnSpec> mColumns = new ArrayList<>();
 
-    final List<String> columnNames = new ArrayList<>();
+    private final List<RelationSpec> mRelations = new ArrayList<>();
 
-    final List<String> columnDefs = new ArrayList<>();
+    private TypeElement mOriginElement;
 
-    final List<String> indexedColumns = new ArrayList<>();
+    private String mTableName;
 
-    final Map<String, TypeMirror> fieldTypes = new LinkedHashMap<>();
+    private String[] mTableConstraints;
 
-    final CodeBlock.Builder instantiate = CodeBlock.builder();
-
-    final CodeBlock.Builder create = CodeBlock.builder();
-
-    final CodeBlock.Builder doAfterInsert = CodeBlock.builder();
-
-    final List<MethodSpec> privateMethods = new ArrayList<>();
-
-    String tableName;
-
-    String pkFieldName;
-
-    boolean hasRelations;
-
-    static TableSpec make(Map<TypeElement, TableSpec> specs, TypeElement element) {
-        TableSpec tableSpec = specs.get(element);
-        if (tableSpec == null) {
-            tableSpec = new TableSpec();
-            specs.put(element, tableSpec);
+    static TableSpec get(Map<TypeElement, TableSpec> specs, TypeElement element) {
+        TableSpec spec = specs.get(element);
+        if (spec == null) {
+            spec = new TableSpec();
+            specs.put(element, spec);
         }
-        return tableSpec;
+        return spec;
     }
 
-    void validate() throws Exception {
-        if (pkFieldName == null) {
-            throw new IllegalArgumentException("No such field annotated with @SQLitePk");
-        }
+    TypeElement getOriginElement() {
+        return mOriginElement;
+    }
+
+    void setOriginElement(TypeElement element) {
+        mOriginElement = element;
+    }
+
+    String getTableName() {
+        return mTableName;
+    }
+
+    void setTableName(String tableName) {
+        mTableName = tableName;
+    }
+
+    void setTableConstraints(String[] tableConstraints) {
+        mTableConstraints = tableConstraints;
+    }
+
+    ClassName getClassName() {
+        final ClassName originClassName = ClassName.get(mOriginElement);
+        return ClassName.get(originClassName.packageName(), originClassName.simpleName() + "$$Table");
+    }
+
+    boolean hasPrimaryKey() {
+        return !mColumns.isEmpty() && mColumns.get(0).isPrimaryKey;
+    }
+
+    void setPk(ColumnSpec columnSpec) {
+        mColumns.add(columnSpec);
+    }
+
+    ColumnSpec getPk() {
+        return mColumns.get(0);
+    }
+
+    void addColumn(ColumnSpec columnSpec) {
+        mColumns.add(columnSpec);
+    }
+
+    List<ColumnSpec> getColumns() {
+        return mColumns;
+    }
+
+    void addRelation(RelationSpec relationSpec) {
+        mRelations.add(relationSpec);
+    }
+
+    List<RelationSpec> getRelations() {
+        return mRelations;
     }
 
 }

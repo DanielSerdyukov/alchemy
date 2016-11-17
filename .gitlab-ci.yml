@@ -1,11 +1,56 @@
-debug:
-  script:
-    - ./gradlew clean testDebugUnitTest
-  except:
-    - /^v.*$/
+stages:
+  - clean
+  - build
+  - test
+  - publish
+  - deploy
 
-bintray:
+cleanup:
+  stage: clean
   script:
-    - ./gradlew clean assembleRelease publishMavenAndroidPublicationToMavenLocal bintrayUpload
-  only:
-    - /^v.*$/
+    - ./gradlew clean
+
+assembleDebug:
+  stage: build
+  script:
+    - ./gradlew assembleDebug
+  artifacts:
+    paths:
+      - library/build
+  except:
+    - tags
+
+assembleRelease:
+  stage: build
+  script:
+    - ./gradlew assembleRelease
+  artifacts:
+    paths:
+      - library/build
+
+unitTest:
+  stage: test
+  script:
+    - ./gradlew testDebugUnitTest
+  dependencies:
+    - assembleDebug
+  except:
+    - tags
+
+publishToMavenLocal:
+  stage: publish
+  script:
+    - ./gradlew publishToMavenLocal
+  artifacts:
+    paths:
+      - library/build
+  dependencies:
+    - assembleRelease
+
+bintrayUpload:
+  stage: deploy
+  script:
+    - ./gradlew bintrayUpload
+  dependencies:
+    - publishToMavenLocal
+  when: manual

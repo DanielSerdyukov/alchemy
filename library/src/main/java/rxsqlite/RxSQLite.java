@@ -1,161 +1,158 @@
 package rxsqlite;
 
-import android.content.Context;
 import android.support.annotation.NonNull;
-import android.support.annotation.VisibleForTesting;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.io.File;
 import java.util.Collections;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.List;
 
 import rx.Observable;
-import rx.Subscription;
-import rx.functions.Action0;
 import rx.functions.Action1;
+import rx.functions.Action3;
 import rx.functions.Func0;
 import rx.functions.Func1;
 import rx.subjects.PublishSubject;
 import rx.subjects.Subject;
-import rxsqlite.bindings.RxSQLiteDb;
-import rxsqlite.bindings.RxSQLiteException;
+import sqlite4a.SQLiteDb;
 
 /**
  * @author Daniel Serdyukov
  */
 public class RxSQLite {
 
-    static final Subject<Class<?>, Class<?>> ON_CHANGE = PublishSubject.create();
+    private static final Subject<Class<?>, Class<?>> ON_CHANGE = PublishSubject.create();
 
-    private static final AtomicReference<SQLiteClient> CLIENT_REF = new AtomicReference<>();
+    private static final Func1<Object, Boolean> NON_NULL = new Func1<Object, Boolean>() {
+        @Override
+        public Boolean call(Object o) {
+            return o != null;
+        }
+    };
 
-    private static final Where ALL = new Where();
+    private static final int BUFFER_SIZE = 2000;
 
-    private RxSQLite() {
-    }
+    private static final Where WHERE_ALL = new Where();
 
-    public static void init(@NonNull Context context, @NonNull SQLiteConfig config) {
-        CLIENT_REF.compareAndSet(null, config.buildClient(context.getApplicationContext()));
+    static volatile boolean sLockdown;
+
+    static volatile SQLiteClient sClient;
+
+    public static Config configure() {
+        return new InternalConfig(new SQLiteDriver());
     }
 
     @NonNull
-    public static <T> Observable<T> insert(@NonNull T object) {
+    public static <T> Observable<T> insert(T object) {
         return insert(Collections.singletonList(object));
     }
 
     @NonNull
-    public static <T> Observable<T> insert(@NonNull final Collection<T> objects) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<T>>() {
+    public static <T> Observable<T> insert(Iterable<T> objects) {
+        return Observable.from(objects)
+                .filter(NON_NULL)
+                .buffer(BUFFER_SIZE)
+                .flatMap(new Func1<List<T>, Observable<T>>() {
+                    @Override
+                    public Observable<T> call(List<T> items) {
+                        return Observable.from(requireClient().insert(items));
+                    }
+                });
+    }
+
+    @NonNull
+    public static <T> Observable<T> select(Class<T> type) {
+        return select(type, WHERE_ALL);
+    }
+
+    @NonNull
+    public static <T> Observable<T> select(final Class<T> type, final Where where) {
+        return Observable.defer(new Func0<Observable<T>>() {
             @Override
-            public Observable<T> call(SQLiteClient client) {
-                if (objects.isEmpty()) {
-                    return Observable.empty();
-                }
-                return Observable.from(client.insert(objects, ON_CHANGE));
+            public Observable<T> call() {
+                return Observable.from(requireClient().select(type, where.buildSelectSql(), where.getArgs()));
             }
         });
     }
 
     @NonNull
-    public static <T> Observable<T> select(@NonNull Class<T> type) {
-        return select(type, ALL);
-    }
-
-    @NonNull
-    public static <T> Observable<T> select(@NonNull final Class<T> type, @NonNull final Where where) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<T>>() {
-            @Override
-            public Observable<T> call(SQLiteClient client) {
-                return Observable.from(client.select(type, where.buildSelectSql(), where.getArgs()));
-            }
-        });
-    }
-
-    @NonNull
-    public static <T> Observable<T> rawSelect(@NonNull final Class<T> type, @NonNull final String sql,
-            final Object... args) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<T>>() {
-            @Override
-            public Observable<T> call(SQLiteClient client) {
-                return Observable.from(client.rawSelect(type, sql, Arrays.asList(args)));
-            }
-        });
-    }
-
-    @NonNull
-    public static Observable<Integer> delete(@NonNull Class<?> type) {
-        return delete(type, ALL);
-    }
-
-    @NonNull
-    public static Observable<Integer> delete(@NonNull final Class<?> type, @NonNull final Where where) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<Integer>>() {
-            @Override
-            public Observable<Integer> call(SQLiteClient client) {
-                return Observable.just(client.delete(type, where.buildDeleteSql(), where.getArgs(), ON_CHANGE));
-            }
-        });
-    }
-
-    @NonNull
-    public static <T> Observable<Integer> delete(@NonNull T object) {
+    public static <T> Observable<Integer> delete(T object) {
         return delete(Collections.singletonList(object));
     }
 
     @NonNull
-    public static <T> Observable<Integer> delete(@NonNull final Collection<T> objects) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<Integer>>() {
+    public static <T> Observable<Integer> delete(Iterable<T> objects) {
+        return Observable.from(objects)
+                .filter(NON_NULL)
+                .buffer(BUFFER_SIZE)
+                .flatMap(new Func1<List<T>, Observable<Integer>>() {
+                    @Override
+                    public Observable<Integer> call(List<T> items) {
+                        return Observable.just(requireClient().delete(items));
+                    }
+                });
+    }
+
+    @NonNull
+    public static Observable<Integer> delete(Class<?> type) {
+        return delete(type, WHERE_ALL);
+    }
+
+    @NonNull
+    public static Observable<Integer> delete(final Class<?> type, final Where where) {
+        return Observable.defer(new Func0<Observable<Integer>>() {
             @Override
-            public Observable<Integer> call(SQLiteClient client) {
-                if (objects.isEmpty()) {
-                    return Observable.empty();
-                }
-                return Observable.just(client.delete(objects, ON_CHANGE));
+            public Observable<Integer> call() {
+                return Observable.just(requireClient().delete(type, where.buildSelectSql(), where.getArgs()));
             }
         });
     }
 
     @NonNull
-    public static <T> Observable<T> exec(@NonNull final Func1<RxSQLiteDb, Observable<T>> func) {
-        return client().flatMap(new Func1<SQLiteClient, Observable<T>>() {
+    public static <T> Observable<T> exec(final Func1<SQLiteDb, Observable<T>> factory) {
+        return Observable.defer(new Func0<Observable<T>>() {
             @Override
-            public Observable<T> call(SQLiteClient client) {
-                return client.exec(func);
+            public Observable<T> call() {
+                return requireClient().exec(factory);
             }
         });
     }
 
     @NonNull
-    public static Subscription onChange(@NonNull final Class<?> type, final Action0 action) {
-        return ON_CHANGE.filter(new Func1<Class<?>, Boolean>() {
-            @Override
-            public Boolean call(Class<?> clazz) {
-                return clazz.equals(type);
-            }
-        }).subscribe(new Action1<Class<?>>() {
-            @Override
-            public void call(Class<?> clazz) {
-                action.call();
-            }
-        });
+    public static Observable<Class<?>> onChange(@NonNull final Class<?> type) {
+        return ON_CHANGE.asObservable()
+                .filter(new Func1<Class<?>, Boolean>() {
+                    @Override
+                    public Boolean call(Class<?> changed) {
+                        return type.equals(changed);
+                    }
+                });
     }
 
-    @VisibleForTesting
-    static void setClient(SQLiteClient client) {
-        CLIENT_REF.set(client);
+    public static void notifyChange(Class<?> type) {
+        ON_CHANGE.onNext(type);
     }
 
-    private static Observable<SQLiteClient> client() {
-        return Observable.defer(new Func0<Observable<SQLiteClient>>() {
-            @Override
-            public Observable<SQLiteClient> call() {
-                final SQLiteClient client = CLIENT_REF.get();
-                if (client == null) {
-                    throw new RxSQLiteException("SQLite client is null. Call RxSQLite.init first.");
-                }
-                return Observable.just(client);
-            }
-        });
+    private static SQLiteClient requireClient() {
+        if (sClient == null) {
+            throw new NullPointerException("Call RxSQLite.init first");
+        }
+        return sClient;
+    }
+
+    public interface Config {
+
+        Config databasePath(File path);
+
+        Config databaseVersion(int version);
+
+        Config doOnOpen(Action1<SQLiteDb> action);
+
+        Config doOnCreate(Action1<SQLiteDb> action);
+
+        Config doOnUpgrade(Action3<SQLiteDb, Integer, Integer> action);
+
+        void apply();
+
     }
 
 }

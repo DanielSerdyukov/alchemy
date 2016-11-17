@@ -7,8 +7,10 @@ import java.util.Iterator;
  */
 class Utils {
 
-    static boolean isEmpty(String string) {
-        return string == null || string.isEmpty();
+    static void append(StringBuilder sb, String appendGlue, String value) {
+        if (!Utils.isEmpty(value)) {
+            sb.append(appendGlue).append(value);
+        }
     }
 
     static void append(StringBuilder sb, String appendGlue, Iterable<?> tokens, String joinGlue) {
@@ -24,19 +26,15 @@ class Utils {
         }
     }
 
-    static void append(StringBuilder sb, String appendGlue, String value) {
-        if (!Utils.isEmpty(value)) {
-            sb.append(appendGlue).append(value);
+    static <T> T requireNonNull(T object, String nullMessage) {
+        if (object == null) {
+            throw new NullPointerException(nullMessage);
         }
+        return object;
     }
 
-    static void append(StringBuilder sb, long[] values, String glue) {
-        for (int i = 0, last = values.length - 1; i <= last; ++i) {
-            sb.append(values[i]);
-            if (i < last) {
-                sb.append(glue);
-            }
-        }
+    private static boolean isEmpty(String string) {
+        return string == null || string.isEmpty();
     }
 
 }

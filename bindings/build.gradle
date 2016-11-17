@@ -1,29 +1,30 @@
+import org.gradle.internal.jvm.Jvm
+import proguard.gradle.ProGuardTask
+
 apply plugin: 'java'
 
 sourceCompatibility = "1.7"
 targetCompatibility = "1.7"
 
-configurations {
-    provided
-    compile.extendsFrom provided
-}
+group pJcenterGroup
+version pVersionName
 
 dependencies {
-    provided files("${sdkDir}/platforms/android-${pCompileSdkVersion}/android.jar")
-    compile "io.reactivex:rxjava:${pRxJavaVersion}"
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.mockito:mockito-core:2.2.16'
+    testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'
 }
 
-String getSdkDir() {
-    def sdk = System.getenv("ANDROID_HOME")
-    if (sdk == null) {
-        def properties = new Properties()
-        properties.load(project.rootProject.file('local.properties').newReader())
-        return properties.getProperty('sdk.dir')
-    } else {
-        return sdk
-    }
-}
+task proguard(type: ProGuardTask, dependsOn: 'assemble') {
+    configuration 'proguard.pro'
 
-if (project.hasProperty('bintrayUser')) {
-    apply from: 'bintray.gradle'
+    injars "${project.buildDir}/libs/bindings-${pVersionName}.jar"
+    outjars "${project.buildDir}/libs/bindings-release-${pVersionName}.jar"
+
+    libraryjars Jvm.current().runtimeJar.absolutePath
+    libraryjars Jvm.current().toolsJar.absolutePath
+
+    printmapping "${project.buildDir}/tmp/mapping.txt"
+    printusage "${project.buildDir}/tmp/usage.txt"
+    dump "${project.buildDir}/tmp/dump.txt"
 }

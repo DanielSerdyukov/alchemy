@@ -157,7 +157,19 @@ public class Where {
         return this;
     }
 
-    @NonNull
+    @VisibleForTesting
+    Where idIn(long[] ids) {
+        mWhereBuilder.append("_id IN(");
+        for (int i = 0, last = ids.length - 1; i <= last; ++i) {
+            mWhereBuilder.append(ids[i]);
+            if (i < last) {
+                mWhereBuilder.append(", ");
+            }
+        }
+        mWhereBuilder.append(")");
+        return this;
+    }
+
     @VisibleForTesting
     String buildSelectSql() {
         final StringBuilder sql = new StringBuilder(120);
@@ -169,7 +181,6 @@ public class Where {
         return sql.append(";").toString();
     }
 
-    @NonNull
     @VisibleForTesting
     String buildDeleteSql() {
         final StringBuilder sql = new StringBuilder(60);
@@ -177,7 +188,6 @@ public class Where {
         return sql.append(";").toString();
     }
 
-    @NonNull
     @VisibleForTesting
     Iterable<Object> getArgs() {
         return Collections.unmodifiableList(mBindValues);

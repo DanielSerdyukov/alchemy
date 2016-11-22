@@ -8,34 +8,12 @@ clean:
   script:
     - ./gradlew clean
 
-bindings:
-  stage: build
-  script:
-    - ./gradlew :bindings:proguard :bindings:test :bindings:publishToMavenLocal
-  artifacts:
-    paths:
-      - bindings/build
-  except:
-    - tags
-
-compiler:
-  stage: build
-  script:
-    - ./gradlew :compiler:proguard :compiler:test :compiler:publishToMavenLocal
-  dependencies:
-    - bindings
-  artifacts:
-    paths:
-      - compiler/build
-  except:
-    - tags
-
 library_debug:
   stage: build
   script:
+    - ./gradlew :bindings:proguard :bindings:test :bindings:publishToMavenLocal
+    - ./gradlew :compiler:proguard :compiler:test :compiler:publishToMavenLocal
     - ./gradlew :library:assembleDebug :library:testDebugUnitTest
-  dependencies:
-    - compiler
   artifacts:
     paths:
       - library/build
@@ -46,8 +24,6 @@ library_release:
   stage: build
   script:
     - ./gradlew :library:assembleRelease :library:publishToMavenLocal
-  dependencies:
-    - compiler
   artifacts:
     paths:
       - library/build

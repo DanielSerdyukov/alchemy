@@ -3,3 +3,4 @@ local.properties
 **/.gradle/
 **/build/
 **/.idea/
+.gradletasknamecache

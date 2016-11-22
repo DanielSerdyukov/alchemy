@@ -1,4 +1,5 @@
 import org.gradle.internal.jvm.Jvm
+import proguard.gradle.ProGuardTask
 
 apply plugin: 'java'
 
@@ -15,7 +16,7 @@ dependencies {
     compile 'com.squareup:javapoet:1.7.0'
     compile 'com.google.auto.service:auto-service:1.0-rc2'
     compile 'com.google.auto:auto-common:0.7'
-    provided project(':bindings')
+    provided 'rxsqlite:bindings:4.0.0'
     testCompile 'junit:junit:4.12'
     testCompile 'com.google.truth:truth:0.30'
     testCompile 'com.google.testing.compile:compile-testing:0.9'
@@ -27,3 +28,19 @@ task copyTestResources(type: Copy) {
 }
 
 processTestResources.dependsOn 'copyTestResources'
+
+task proguard(type: ProGuardTask, dependsOn: 'assemble') {
+    configuration 'proguard.pro'
+
+    injars "${project.buildDir}/libs/compiler-${pVersionName}.jar"
+    outjars "${project.buildDir}/libs/compiler-release-${pVersionName}.jar"
+
+    libraryjars Jvm.current().runtimeJar.absolutePath
+    libraryjars Jvm.current().toolsJar.absolutePath
+
+    printmapping "${project.buildDir}/tmp/mapping.txt"
+    printusage "${project.buildDir}/tmp/usage.txt"
+    dump "${project.buildDir}/tmp/dump.txt"
+}
+
+apply from: 'bintray.gradle'

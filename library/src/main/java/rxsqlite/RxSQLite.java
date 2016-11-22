@@ -1,11 +1,13 @@
 package rxsqlite;
 
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
+import rx.Completable;
 import rx.Observable;
 import rx.functions.Action1;
 import rx.functions.Action3;
@@ -126,6 +128,17 @@ public class RxSQLite {
                         return type.equals(changed);
                     }
                 });
+    }
+
+    @NonNull
+    public static Completable wipe() {
+        return Completable.defer(new Func0<Completable>() {
+            @Override
+            public Completable call() {
+                requireClient().removeDatabase();
+                return Completable.complete();
+            }
+        });
     }
 
     public static void notifyChange(Class<?> type) {

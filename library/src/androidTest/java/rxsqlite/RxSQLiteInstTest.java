@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -174,6 +175,39 @@ public class RxSQLiteInstTest {
                 "SELECT r.* FROM baz AS r, bar_mBazList AS rel WHERE r._id = rel.rfk AND rel.lfk = 2;",
                 "SELECT value FROM bar_mStrings WHERE fk = 2;"
         ));
+    }
+
+    @Test
+    public void removeDatabase() throws Exception {
+        final File databasePath = InstrumentationRegistry.getContext().getDatabasePath("main.db");
+        RxSQLite.sLockdown = false;
+        RxSQLite.configure()
+                .databasePath(databasePath)
+                .doOnOpen(new Action1<SQLiteDb>() {
+                    @Override
+                    public void call(SQLiteDb db) {
+                        db.setLogger(new SQLiteLog() {
+                            @Override
+                            public void log(String sql) {
+                                Log.e(RxSQLiteInstTest.class.getName(), sql);
+                            }
+                        });
+                    }
+                })
+                .apply();
+
+        TestSubscriber<Object> subscriber = TestSubscriber.create();
+        RxSQLite.insert(new Foo()).subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
+        subscriber.assertNoErrors();
+        Assert.assertThat(databasePath.exists(), Is.is(true));
+
+        subscriber = TestSubscriber.create();
+        RxSQLite.wipe().subscribe(subscriber);
+        subscriber.awaitTerminalEvent();
+        subscriber.assertNoErrors();
+        subscriber.assertCompleted();
+        Assert.assertThat(databasePath.exists(), Is.is(false));
     }
 
     @After

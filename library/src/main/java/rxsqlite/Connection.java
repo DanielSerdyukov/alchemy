@@ -1,5 +1,6 @@
 package rxsqlite;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,15 @@ class Connection {
             flags |= SQLite.OPEN_READONLY;
         }
         return openDatabase(primary, flags);
+    }
+
+    void removeDatabase() {
+        if (!mInMemory) {
+            final File file = new File(mDatabasePath);
+            if (file.exists() && !file.delete()) {
+                throw new RxSQLiteException("Can't delete database file");
+            }
+        }
     }
 
     private RxSQLiteDbImpl openDatabase(boolean primary, int flags) {

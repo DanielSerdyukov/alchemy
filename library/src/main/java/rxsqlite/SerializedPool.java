@@ -1,9 +1,13 @@
 package rxsqlite;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 /**
  * @author Daniel Serdyukov
  */
 class SerializedPool implements Pool {
+
+    private final ReentrantLock mLock = new ReentrantLock();
 
     private final Connection mConnection;
 
@@ -15,21 +19,38 @@ class SerializedPool implements Pool {
 
     @Override
     public RxSQLiteDbImpl acquireDatabase(boolean writable) {
-        RxSQLiteDbImpl db = mDb;
-        if (db == null) {
-            synchronized (this) {
-                db = mDb;
-                if (db == null) {
-                    db = mDb = mConnection.openDatabase(true);
-                }
+        mLock.lock();
+        try {
+            if (mDb == null) {
+                mDb = mConnection.openDatabase(true);
             }
+            return mDb;
+        } finally {
+            mLock.unlock();
         }
-        return db;
     }
 
     @Override
     public void releaseDatabase(RxSQLiteDbImpl db) {
 
+    }
+
+    @Override
+    public void removeDatabase() {
+        if (mDb != null) {
+            mDb.close();
+        }
+        mConnection.removeDatabase();
+    }
+
+    @Override
+    public void lock() {
+        mLock.lock();
+    }
+
+    @Override
+    public void unlock() {
+        mLock.unlock();
     }
 
 }

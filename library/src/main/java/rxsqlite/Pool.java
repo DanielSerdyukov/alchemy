@@ -9,4 +9,10 @@ interface Pool {
 
     void releaseDatabase(RxSQLiteDbImpl db);
 
+    void removeDatabase();
+
+    void lock();
+
+    void unlock();
+
 }

@@ -51,8 +51,10 @@ public class RxSQLiteTest {
     @Test
     public void insertSingletonList() throws Exception {
         final List<Object> items = Collections.singletonList(new Object());
+        final long[] rowIds = new long[]{1};
         final Object selected = new Object();
-        Mockito.doReturn(Collections.singletonList(selected)).when(mTable).insert(mDb, items);
+        Mockito.doReturn(rowIds).when(mTable).insert(mDb, items);
+        Mockito.doReturn(Collections.singletonList(selected)).when(mTable).select(mDb, rowIds);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
         RxSQLite.insert(items).subscribe(subscriber);
         subscriber.awaitTerminalEvent();
@@ -68,8 +70,10 @@ public class RxSQLiteTest {
     @Test
     public void insertList() throws Exception {
         final List<Object> items = Arrays.asList(new Object(), new Object());
+        final long[] rowIds = new long[]{1, 2};
         final List<Object> selected = Arrays.asList(new Object(), new Object());
-        Mockito.doReturn(selected).when(mTable).insert(mDb, items);
+        Mockito.doReturn(rowIds).when(mTable).insert(mDb, items);
+        Mockito.doReturn(selected).when(mTable).select(mDb, rowIds);
         final TestSubscriber<Object> subscriber = TestSubscriber.create();
         RxSQLite.insert(items).subscribe(subscriber);
         subscriber.awaitTerminalEvent();

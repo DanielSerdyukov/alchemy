@@ -17,10 +17,13 @@ Add some code blocks in your ```Application``` class
 public void onCreate() {
     super.onCreate();
     SQLite4a.loadLibrary(this); // load native sqlite library
-    RxSQLite.init(this, SQLiteConfig.memory()
-        .doOnOpen(rawDb -> rawDb.exec("PRAGMA case_sensitive_like = true;"))
-        .enableTracing() // debug logs in logcat
-        .build(this));
+    RxSQLite.configure()
+        .doOnOpen(db -> {
+            db.exec("PRAGMA case_sensitive_like = true;");
+            db.setLogger(sql -> Log.i("SQLite", sql);
+            ...
+        })
+        .apply()
 }
 ```
 
@@ -49,7 +52,7 @@ RxSQLite.insert(user)
 List<User> users = ...
 RxSQLite.insert(users)
     .subscribe(savedUsers -> {
-        adapter.changeDataSet(savedUsesr)
+        adapter.changeDataSet(savedUsers)
     });
 ```
 
@@ -70,13 +73,39 @@ RxSQLite.delete(users)
     });
 ```
 
-#### Clear table
+#### Delete by WHERE condition
 ```java
 RxSQLite.delete(User.class, new Where()
     .equalTo('name', 'Joe'))
     .subscribe(affectedRows -> {
 
     });
+```
+
+----
+
+### Relations support
+
+```java
+@SQLiteObject("projects")
+public class Project {
+
+    @SQLitePk
+    private long mId;
+
+    @SQLiteColumn
+    private String mName;
+
+    @SQLiteRelation(cascade = false) // Don't delete related objects (default = true)
+    private User mManager; // User must be annotated with @SQLiteObject
+
+    @SQLiteRelation
+    private List<Issue> mIssue; // Issue must be annotated with @SQLiteObject
+
+    @SQLiteRelation
+    private List<String> mTags; // List<String> supported as frequently used type
+
+}
 ```
 
 ----
@@ -110,8 +139,10 @@ Supported of field types:
 * ```byte[]``` as **BLOB**
 * ```String``` as **TEXT**
 * ```Enum<T>``` as **TEXT**
+* ```Date``` as **INTEGER**
 
 ----
+
 
 License
 -------

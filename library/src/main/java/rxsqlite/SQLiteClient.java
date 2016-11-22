@@ -1,5 +1,6 @@
 package rxsqlite;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -104,6 +105,34 @@ class SQLiteClient {
         final RxSQLiteDbImpl db = mPool.acquireDatabase(true);
         try {
             return factory.call(db.mNativeDb);
+        } finally {
+            mPool.releaseDatabase(db);
+        }
+    }
+
+    void removeDatabase() {
+        mPool.lock();
+        try {
+            mPool.removeDatabase();
+        } finally {
+            mPool.unlock();
+        }
+    }
+
+    Iterable<String> tables() {
+        final RxSQLiteDbImpl db = mPool.acquireDatabase(false);
+        try {
+            final RxSQLiteStmt stmt = db.prepare("SELECT name FROM sqlite_master WHERE type='table';");
+            try {
+                final RxSQLiteCursor cursor = stmt.executeSelect();
+                final List<String> tables = new ArrayList<>();
+                while (cursor.step()) {
+                    tables.add(cursor.getColumnString(0));
+                }
+                return tables;
+            } finally {
+                stmt.close();
+            }
         } finally {
             mPool.releaseDatabase(db);
         }

@@ -1,6 +1,7 @@
 stages:
   - clean
   - build
+  - publish
   - deploy
 
 clean:
@@ -8,19 +9,33 @@ clean:
   script:
     - ./gradlew clean
 
-library_debug:
+debug:
   stage: build
   script:
-    - ./gradlew :bindings:proguard :bindings:test :bindings:publishToMavenLocal
-    - ./gradlew :compiler:proguard :compiler:test :compiler:publishToMavenLocal
+    - ./gradlew :bindings:assemble :bindings:test
+    - ./gradlew :compiler:assemble :compiler:test
     - ./gradlew :library:assembleDebug :library:testDebugUnitTest
   except:
     - tags
 
-library_release:
+release:
   stage: build
   script:
-    - ./gradlew :library:assembleRelease :library:publishToMavenLocal
+    - ./gradlew :bindings:proguard
+    - ./gradlew :compiler:proguard
+    - ./gradlew :library:assembleRelease
+  artifacts:
+    paths:
+      - bindings/build
+      - compiler/build
+      - library/build
+  except:
+    - tags
+
+mavenLocal:
+  stage: publish
+  script:
+    - ./gradlew publishToMavenLocal
   except:
     - tags
 
@@ -28,6 +43,4 @@ bintray:
   stage: deploy
   script:
     - ./gradlew bintrayUpload
-  dependencies:
-    - library_release
   when: manual

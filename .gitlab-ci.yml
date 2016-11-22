@@ -14,9 +14,6 @@ library_debug:
     - ./gradlew :bindings:proguard :bindings:test :bindings:publishToMavenLocal
     - ./gradlew :compiler:proguard :compiler:test :compiler:publishToMavenLocal
     - ./gradlew :library:assembleDebug :library:testDebugUnitTest
-  artifacts:
-    paths:
-      - library/build
   except:
     - tags
 
@@ -24,9 +21,6 @@ library_release:
   stage: build
   script:
     - ./gradlew :library:assembleRelease :library:publishToMavenLocal
-  artifacts:
-    paths:
-      - library/build
   except:
     - tags
 

@@ -46,11 +46,11 @@ configurations {
 }
 
 dependencies {
-    compile 'rxsqlite:bindings:4.0.0'
-    provided 'rxsqlite:compiler:4.0.0'
+    compile project(':bindings')
+    provided project(':compiler')
     compile 'com.android.support:support-annotations:25.0.1'
     compile 'io.reactivex:rxjava:1.2.2'
-    compile 'sqlite4a:library:3.15.1-r2-SNAPSHOT'
+    compile 'sqlite4a:library:3.15.1-r2'
     testCompile 'junit:junit:4.12'
     testCompile 'org.mockito:mockito-core:2.2.16'
     testCompile 'org.hamcrest:java-hamcrest:2.0.0.0'

@@ -16,7 +16,7 @@ dependencies {
     compile 'com.squareup:javapoet:1.7.0'
     compile 'com.google.auto.service:auto-service:1.0-rc2'
     compile 'com.google.auto:auto-common:0.7'
-    provided 'rxsqlite:bindings:4.0.0'
+    provided project(':bindings')
     testCompile 'junit:junit:4.12'
     testCompile 'com.google.truth:truth:0.30'
     testCompile 'com.google.testing.compile:compile-testing:0.9'

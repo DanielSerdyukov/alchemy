@@ -40,7 +40,7 @@ publishing {
                 license.appendNode('distribution', 'repo')
 
                 def dependencies = root.appendNode('dependencies')
-                ['compile'].each { scope ->
+                ['compile', 'provided'].each { scope ->
                     project.configurations[scope].allDependencies.each {
                         def dependency = dependencies.appendNode('dependency')
                         dependency.appendNode('groupId', it.group)

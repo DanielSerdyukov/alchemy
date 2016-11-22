@@ -16,7 +16,7 @@ dependencies {
     compile 'com.squareup:javapoet:1.7.0'
     compile 'com.google.auto.service:auto-service:1.0-rc2'
     compile 'com.google.auto:auto-common:0.7'
-    provided project(':bindings')
+    provided files('../bindings/build/libs/bindings-release-4.0.0.jar')
     testCompile 'junit:junit:4.12'
     testCompile 'com.google.truth:truth:0.30'
     testCompile 'com.google.testing.compile:compile-testing:0.9'

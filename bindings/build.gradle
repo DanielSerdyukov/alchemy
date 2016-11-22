@@ -28,5 +28,3 @@ task proguard(type: ProGuardTask, dependsOn: 'assemble') {
     printusage "${project.buildDir}/tmp/usage.txt"
     dump "${project.buildDir}/tmp/dump.txt"
 }
-
-apply from: 'bintray.gradle'

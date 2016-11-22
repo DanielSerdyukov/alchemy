@@ -12,7 +12,6 @@ clean:
 debug:
   stage: build
   script:
-    - ./gradlew :bindings:assemble :bindings:test
     - ./gradlew :compiler:assemble :compiler:test
     - ./gradlew :library:assembleDebug :library:testDebugUnitTest
   except:
@@ -21,12 +20,10 @@ debug:
 release:
   stage: build
   script:
-    - ./gradlew :bindings:proguard
     - ./gradlew :compiler:proguard
     - ./gradlew :library:assembleRelease
   artifacts:
     paths:
-      - bindings/build
       - compiler/build
       - library/build
   except:

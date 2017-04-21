@@ -87,26 +87,7 @@ configure([project(':alchemy'), project(':alchemy-annotations'),
 
 configure([project(':alchemy'), project(':alchemy-annotations'),
            project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler'),
-           project(':alchemy-android')]) {
-    apply plugin: 'com.jfrog.bintray'
-
-    bintray {
-        user = rootProject.properties.get('bintray.user')
-        key = rootProject.properties.get('bintray.apikey')
-        publications = ['maven']
-        override = true
-        pkg {
-            repo = 'alchemy'
-            name = 'alchemy'
-            licenses = ['Apache-2.0']
-            vcsUrl = 'https://github.com/DanielSerdyukov/alchemy.git'
-            version {
-                name = rootProject.version
-                released = new Date()
-            }
-        }
-    }
-
+           project(':alchemy-android'), project(':alchemy-sqlite4a')]) {
     ext {
         pomXml = {
             name project.name
@@ -128,6 +109,30 @@ configure([project(':alchemy'), project(':alchemy-annotations'),
                 developer {
                     name 'Daniel Serdyukov'
                 }
+            }
+        }
+    }
+}
+
+
+configure([project(':alchemy'), project(':alchemy-annotations'),
+           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler'),
+           project(':alchemy-android')]) {
+    apply plugin: 'com.jfrog.bintray'
+
+    bintray {
+        user = rootProject.properties.get('bintray.user')
+        key = rootProject.properties.get('bintray.apikey')
+        publications = ['maven']
+        override = true
+        pkg {
+            repo = 'alchemy'
+            name = 'alchemy'
+            licenses = ['Apache-2.0']
+            vcsUrl = 'https://github.com/DanielSerdyukov/alchemy.git'
+            version {
+                name = rootProject.version
+                released = new Date()
             }
         }
     }

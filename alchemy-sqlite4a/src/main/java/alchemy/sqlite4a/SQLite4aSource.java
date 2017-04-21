@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-package alchemy.tests.sqlite4a;
+package alchemy.sqlite4a;
 
-import alchemy.Alchemy;
-import alchemy.android.sqlite.AndroidSource;
-import alchemy.sqlite.DefaultSchema;
-import alchemy.tests.AlchemyTest;
-import android.support.test.runner.AndroidJUnit4;
-import org.junit.runner.RunWith;
+import alchemy.sqlite.SQLiteSource;
+import alchemy.sqlite.platform.SQLiteSchema;
 
-@RunWith(AndroidJUnit4.class)
-public class AlchemySQLiteTest extends AlchemyTest {
+public class SQLite4aSource extends SQLiteSource {
 
-    @Override
-    protected Alchemy getAlchemy() {
-        return new Alchemy(new AndroidSource(new DefaultSchema(1), ":memory:"));
+    public SQLite4aSource(SQLiteSchema schema, String path) {
+        super(new SQLite4aDriver(), schema, path);
     }
 
 }

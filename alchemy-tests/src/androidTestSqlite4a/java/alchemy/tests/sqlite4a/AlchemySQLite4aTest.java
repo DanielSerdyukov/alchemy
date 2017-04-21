@@ -17,18 +17,27 @@
 package alchemy.tests.sqlite4a;
 
 import alchemy.Alchemy;
-import alchemy.android.sqlite.AndroidSource;
 import alchemy.sqlite.DefaultSchema;
+import alchemy.sqlite4a.SQLite4aSource;
 import alchemy.tests.AlchemyTest;
+import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import com.getkeepsafe.relinker.ReLinker;
+import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
+import sqlite4a.SQLite;
 
 @RunWith(AndroidJUnit4.class)
-public class AlchemySQLiteTest extends AlchemyTest {
+public class AlchemySQLite4aTest extends AlchemyTest {
+
+    @BeforeClass
+    public static void loadJni() {
+        ReLinker.loadLibrary(InstrumentationRegistry.getContext(), SQLite.JNI_LIB);
+    }
 
     @Override
     protected Alchemy getAlchemy() {
-        return new Alchemy(new AndroidSource(new DefaultSchema(1), ":memory:"));
+        return new Alchemy(new SQLite4aSource(new DefaultSchema(1), ":memory:"));
     }
 
 }

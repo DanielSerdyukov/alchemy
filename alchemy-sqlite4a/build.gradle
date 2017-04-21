@@ -1,16 +1,14 @@
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
 
     defaultConfig {
-        minSdkVersion 15
-        targetSdkVersion 25
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
-
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        versionName rootProject.version
     }
 
     buildTypes {
@@ -18,11 +16,6 @@ android {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard.pro'
         }
-    }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
     }
 
     libraryVariants.all { variant ->
@@ -36,21 +29,10 @@ android {
     }
 }
 
-configurations {
-    testCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
-    androidTestCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
-}
-
 dependencies {
     provided "alchemy:alchemy:${rootProject.version}"
     compile "alchemy:alchemy-sqlite:${rootProject.version}"
-    androidTestCompile "alchemy:alchemy:${rootProject.version}"
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
-        exclude group: 'com.android.support', module: 'support-annotations'
-        exclude group: 'org.hamcrest'
-    })
-    androidTestCompile rootProject.deps.junit
-    androidTestCompile rootProject.deps.hamcrest
+    provided 'sqlite4a:sqlite4a:3.18.0'
 }
 
 apply plugin: 'maven-publish'

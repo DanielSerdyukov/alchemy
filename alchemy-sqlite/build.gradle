@@ -1,0 +1,16 @@
+apply plugin: 'java'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+configurations {
+    testCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
+}
+
+dependencies {
+    compileOnly "alchemy:alchemy:${rootProject.version}"
+    testCompile "alchemy:alchemy:${rootProject.version}"
+    testCompile rootProject.deps.junit
+    testCompile rootProject.deps.mockito
+    testCompile rootProject.deps.hamcrest
+}

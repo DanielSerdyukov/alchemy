@@ -1,0 +1,25 @@
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    compile project(':alchemy-sqlite')
+    compile "alchemy:alchemy:${rootProject.version}"
+    compile "alchemy:alchemy-annotations:${rootProject.version}"
+    compile 'com.squareup:javapoet:1.8.0'
+    compile 'com.google.auto.service:auto-service:1.0-rc3'
+    compile 'com.google.auto:auto-common:0.8'
+    compile 'com.google.guava:guava:21.0'
+    testCompile rootProject.deps.junit
+    testCompile 'com.google.truth:truth:0.32'
+    testCompile 'com.google.testing.compile:compile-testing:0.10'
+
+}
+
+task copyTestResources(type: Copy) {
+    from "${projectDir}/src/test/resources"
+    into "${buildDir}/classes/test"
+}
+
+processTestResources.dependsOn 'copyTestResources'

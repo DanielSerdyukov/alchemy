@@ -34,7 +34,8 @@ ext.deps = [
         hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0'
 ]
 
-configure([project(':alchemy'), project(':alchemy-annotations')]) {
+configure([project(':alchemy'), project(':alchemy-annotations'),
+           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler')]) {
     task proguard(type: ProGuardTask, dependsOn: 'jar') {
         configuration 'proguard.pro'
         injars "${project.buildDir}/libs/${project.name}-${project.version}.jar"
@@ -47,7 +48,8 @@ configure([project(':alchemy'), project(':alchemy-annotations')]) {
     project.tasks.withType(PublishToMavenLocal).all { it.dependsOn proguard }
 }
 
-configure([project(':alchemy'), project(':alchemy-annotations')]) {
+configure([project(':alchemy'), project(':alchemy-annotations'),
+           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler')]) {
     apply plugin: 'java'
     apply plugin: 'maven-publish'
 
@@ -83,7 +85,8 @@ configure([project(':alchemy'), project(':alchemy-annotations')]) {
     }
 }
 
-configure([project(':alchemy'), project(':alchemy-annotations')]) {
+configure([project(':alchemy'), project(':alchemy-annotations'),
+           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler')]) {
     apply plugin: 'com.jfrog.bintray'
 
     bintray {

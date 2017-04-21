@@ -16,7 +16,6 @@
 
 package alchemy.sqlite.platform;
 
-// TODO: 14.04.17 low level hooks
 public interface SQLiteDriver {
 
     SQLiteDb open(String path, boolean readOnly, boolean fullMutex);

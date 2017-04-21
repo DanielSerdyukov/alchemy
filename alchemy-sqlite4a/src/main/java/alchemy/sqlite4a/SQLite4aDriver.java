@@ -18,10 +18,15 @@ package alchemy.sqlite4a;
 
 import alchemy.sqlite.platform.SQLiteDb;
 import alchemy.sqlite.platform.SQLiteDriver;
-import android.util.Log;
 import sqlite4a.SQLite;
 
 class SQLite4aDriver implements SQLiteDriver {
+
+    private final SQLite4aHook mHook;
+
+    SQLite4aDriver(SQLite4aHook hook) {
+        mHook = hook;
+    }
 
     @Override
     public SQLiteDb open(String path, boolean readOnly, boolean fullMutex) {
@@ -38,12 +43,7 @@ class SQLite4aDriver implements SQLiteDriver {
             flags |= SQLite.OPEN_NOMUTEX;
         }
         final sqlite4a.SQLiteDb db = SQLite.open(path, flags);
-        db.trace(new sqlite4a.SQLiteDb.Trace() {
-            @Override
-            public void trace(String sql) {
-                Log.i("SQLite4a", sql);
-            }
-        });
+        mHook.onDatabaseOpen(db);
         db.exec("PRAGMA foreign_keys = ON;");
         return new SQLite4aDb(db);
     }

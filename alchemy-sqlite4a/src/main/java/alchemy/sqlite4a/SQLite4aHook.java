@@ -16,17 +16,17 @@
 
 package alchemy.sqlite4a;
 
-import alchemy.sqlite.SQLiteSource;
-import alchemy.sqlite.platform.SQLiteSchema;
+import sqlite4a.SQLiteDb;
 
-public class SQLite4aSource extends SQLiteSource {
+public interface SQLite4aHook {
 
-    public SQLite4aSource(SQLiteSchema schema, String path) {
-        super(new SQLite4aDriver(SQLite4aHook.NONE), schema, path);
-    }
+    SQLite4aHook NONE = new SQLite4aHook() {
+        @Override
+        public void onDatabaseOpen(SQLiteDb db) {
 
-    public SQLite4aSource(SQLiteSchema schema, String path, SQLite4aHook hook) {
-        super(new SQLite4aDriver(hook), schema, path);
-    }
+        }
+    };
+
+    void onDatabaseOpen(SQLiteDb db);
 
 }

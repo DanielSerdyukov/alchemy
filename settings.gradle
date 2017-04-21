@@ -1,0 +1,4 @@
+rootProject.name = 'alchemy-bundle'
+include 'alchemy'
+include 'alchemy-annotations'
+

@@ -1,0 +1,132 @@
+import com.jfrog.bintray.gradle.BintrayUploadTask
+import proguard.gradle.ProGuardTask
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.4.0-alpha6'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'net.sf.proguard:proguard-gradle:5.3.3'
+    }
+}
+
+allprojects {
+    repositories {
+        jcenter()
+        mavenLocal()
+    }
+    group 'alchemy'
+    version '1.0.0'
+}
+
+ext {
+    minSdkVersion = 15
+    targetSdkVersion = 25
+    compileSdkVersion = 25
+    buildToolsVersion = '25.0.2'
+}
+
+ext.deps = [
+        junit   : 'junit:junit:4.12',
+        mockito : 'org.mockito:mockito-core:2.7.22',
+        hamcrest: 'org.hamcrest:java-hamcrest:2.0.0.0'
+]
+
+configure([project(':alchemy'), project(':alchemy-annotations')]) {
+    task proguard(type: ProGuardTask, dependsOn: 'jar') {
+        configuration 'proguard.pro'
+        injars "${project.buildDir}/libs/${project.name}-${project.version}.jar"
+        outjars "${project.buildDir}/libs/${project.name}-release-${project.version}.jar"
+        libraryjars "${System.getProperty('java.home')}/lib/rt.jar"
+        printmapping "${project.buildDir}/tmp/mapping.txt"
+        printusage "${project.buildDir}/tmp/usage.txt"
+        dump "${project.buildDir}/tmp/dump.txt"
+    }
+    project.tasks.withType(PublishToMavenLocal).all { it.dependsOn proguard }
+}
+
+configure([project(':alchemy'), project(':alchemy-annotations')]) {
+    apply plugin: 'java'
+    apply plugin: 'maven-publish'
+
+    task sourcesJar(type: Jar, dependsOn: classes) {
+        from sourceSets.main.allSource
+    }
+
+    publishing {
+        publications {
+            maven(MavenPublication) {
+                groupId rootProject.group
+                artifactId project.name
+                version rootProject.version
+
+                artifact project.file("${project.buildDir}/libs/${project.name}-release-${project.version}.jar")
+                artifact sourcesJar {
+                    classifier "sources"
+                }
+
+                pom.withXml {
+                    asNode().children().last() + project.pomXml
+                    def dependencies = asNode().appendNode('dependencies')
+                    configurations.compile.allDependencies.each {
+                        def dependency = dependencies.appendNode('dependency')
+                        dependency.appendNode('groupId', it.group)
+                        dependency.appendNode('artifactId', it.name)
+                        dependency.appendNode('version', it.version)
+                        dependency.appendNode('scope', 'compile')
+                    }
+                }
+            }
+        }
+    }
+}
+
+configure([project(':alchemy'), project(':alchemy-annotations')]) {
+    apply plugin: 'com.jfrog.bintray'
+
+    bintray {
+        user = rootProject.properties.get('bintray.user')
+        key = rootProject.properties.get('bintray.apikey')
+        publications = ['maven']
+        override = true
+        pkg {
+            repo = 'alchemy'
+            name = 'alchemy'
+            licenses = ['Apache-2.0']
+            vcsUrl = 'https://github.com/DanielSerdyukov/alchemy.git'
+            version {
+                name = rootProject.version
+                released = new Date()
+            }
+        }
+    }
+
+    ext {
+        pomXml = {
+            name project.name
+            resolveStrategy = DELEGATE_FIRST
+            url 'https://github.com/DanielSerdyukov/alchemy'
+            scm {
+                url 'https://github.com/DanielSerdyukov/alchemy.git'
+                connection 'scm:git:git://github.com/DanielSerdyukov/alchemy.git'
+                developerConnection 'scm:git:git@github.com/DanielSerdyukov/alchemy.git'
+            }
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'http://www.apache.org/license/LICENSE-2.0.txt'
+                    distribution 'repo'
+                }
+            }
+            developers {
+                developer {
+                    name 'Daniel Serdyukov'
+                }
+            }
+        }
+    }
+
+    project.tasks.withType(BintrayUploadTask).all { it.dependsOn 'publishToMavenLocal' }
+}

@@ -17,6 +17,7 @@
 package alchemy.sqlite.compiler;
 
 import alchemy.AlchemyException;
+import alchemy.sqlite.platform.SQLiteMigration;
 import alchemy.sqlite.platform.SQLiteSchema;
 import alchemy.sqlite.platform.SQLiteTable;
 import com.squareup.javapoet.*;
@@ -24,9 +25,7 @@ import com.squareup.javapoet.*;
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 class SchemaSpec {
 
@@ -50,12 +49,15 @@ class SchemaSpec {
                 .addSuperinterface(ClassName.get(SQLiteSchema.class))
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addField(makeTablesField())
+                .addField(makeMigrationsField())
                 .addField(makeVersionField())
                 .addStaticBlock(makeStaticInit())
                 .addMethod(makeInit())
                 .addMethod(makeGetVersion())
                 .addMethod(makeGetTable())
-                .addMethod(makeGetAllTables());
+                .addMethod(makeGetAllTables())
+                .addMethod(makeAddMigration())
+                .addMethod(makeGetAllMigrations());
         JavaFile.builder(mClassName.packageName(), spec.build())
                 .addFileComment("Generated code from Alchemy. Do not modify!")
                 .skipJavaLangImports(true)
@@ -69,6 +71,13 @@ class SchemaSpec {
                 ParameterizedTypeName.get(ClassName.get(SQLiteTable.class), TypeVariableName.get("?"))),
                 "TABLES", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                 .initializer("new $T<>()", HashMap.class)
+                .build();
+    }
+
+    private FieldSpec makeMigrationsField() {
+        return FieldSpec.builder(ParameterizedTypeName.get(List.class, SQLiteMigration.class), "mMigrations",
+                Modifier.PRIVATE, Modifier.FINAL)
+                .initializer("new $T<>()", ArrayList.class)
                 .build();
     }
 
@@ -135,6 +144,26 @@ class SchemaSpec {
                 .returns(ParameterizedTypeName.get(ClassName.get(Collection.class), ParameterizedTypeName
                         .get(ClassName.get(SQLiteTable.class), TypeVariableName.get("?"))))
                 .addStatement("return $N.values()", makeTablesField())
+                .build();
+    }
+
+    private MethodSpec makeAddMigration() {
+        return MethodSpec.methodBuilder("addMigration")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(SQLiteMigration.class, "migration")
+                .returns(SQLiteSchema.class)
+                .addStatement("$N.add(migration)", makeMigrationsField())
+                .addStatement("return this")
+                .build();
+    }
+
+    private MethodSpec makeGetAllMigrations() {
+        return MethodSpec.methodBuilder("getAllMigrations")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(ParameterizedTypeName.get(Collection.class, SQLiteMigration.class))
+                .addStatement("return $T.unmodifiableList($N)", Collections.class, makeMigrationsField())
                 .build();
     }
 

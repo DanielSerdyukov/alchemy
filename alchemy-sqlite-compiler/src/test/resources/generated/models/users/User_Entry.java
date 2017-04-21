@@ -39,6 +39,7 @@ public final class User_Entry implements SQLiteEntry<User> {
         if (object.mAvatar == null) {
             stmt.bindNull(5);
         } else {
+            stmt.bindBlob(5, object.mAvatar);
         }
         if (object.mCreated == null) {
             stmt.bindNull(6);
@@ -55,6 +56,7 @@ public final class User_Entry implements SQLiteEntry<User> {
         object.mAge = (int) row.getColumnLong(1);
         object.mName = row.getColumnString(2);
         object.mWeight = (double) row.getColumnDouble(3);
+        object.mAvatar = row.getColumnBlob(4);
         object.mCreated = new Date(row.getColumnLong(5));
         return object;
     }

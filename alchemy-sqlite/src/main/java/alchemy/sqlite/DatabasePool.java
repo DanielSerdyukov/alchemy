@@ -17,10 +17,7 @@
 package alchemy.sqlite;
 
 
-import alchemy.sqlite.platform.SQLiteDb;
-import alchemy.sqlite.platform.SQLiteDriver;
-import alchemy.sqlite.platform.SQLiteSchema;
-import alchemy.sqlite.platform.SQLiteTable;
+import alchemy.sqlite.platform.*;
 
 import java.util.Collection;
 
@@ -65,7 +62,9 @@ abstract class DatabasePool {
     }
 
     private void applyMigrations(SQLiteDb db, int oldVersion, int newVersion) {
-        // TODO: 12.04.17 schema migration
+        for (final SQLiteMigration migration : mSchema.getAllMigrations()) {
+            migration.apply(db, oldVersion, newVersion);
+        }
     }
 
 }

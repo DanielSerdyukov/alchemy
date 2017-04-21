@@ -4,10 +4,14 @@ package alchemy.sqlite;
 import alchemy.AlchemyException;
 import alchemy.sqlite.models.groups.Group;
 import alchemy.sqlite.models.users.User;
+import alchemy.sqlite.platform.SQLiteMigration;
 import alchemy.sqlite.platform.SQLiteSchema;
 import alchemy.sqlite.platform.SQLiteTable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unchecked")
@@ -18,6 +22,8 @@ public final class DefaultSchema implements SQLiteSchema {
         TABLES.put(Group.class, new Group_Table());
         TABLES.put(User.class, new User_Table());
     }
+
+    private final List<SQLiteMigration> mMigrations = new ArrayList<>();
 
     private final int mVersion;
 
@@ -42,5 +48,16 @@ public final class DefaultSchema implements SQLiteSchema {
     @Override
     public Collection<SQLiteTable<?>> getAllTables() {
         return TABLES.values();
+    }
+
+    @Override
+    public SQLiteSchema addMigration(SQLiteMigration migration) {
+        mMigrations.add(migration);
+        return this;
+    }
+
+    @Override
+    public Collection<SQLiteMigration> getAllMigrations() {
+        return Collections.unmodifiableList(mMigrations);
     }
 }

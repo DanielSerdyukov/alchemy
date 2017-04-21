@@ -16,18 +16,8 @@
 
 package alchemy.sqlite.platform;
 
-import java.util.Collection;
+public interface SQLiteMigration {
 
-public interface SQLiteSchema {
-
-    int getVersion();
-
-    <T> SQLiteTable<T> getTable(Class<T> clazz);
-
-    Collection<SQLiteTable<?>> getAllTables();
-
-    SQLiteSchema addMigration(SQLiteMigration migration);
-
-    Collection<SQLiteMigration> getAllMigrations();
+    void apply(SQLiteDb db, int fromVersion, int toVersion);
 
 }

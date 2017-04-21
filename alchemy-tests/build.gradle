@@ -1,0 +1,48 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    productFlavors {
+        sqlite
+    }
+
+    packagingOptions {
+        exclude 'META-INF/rxjava.properties'
+    }
+}
+
+configurations {
+    testCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
+    androidTestCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
+}
+
+dependencies {
+    compile "alchemy:alchemy:${rootProject.version}"
+    compile "alchemy:alchemy-annotations:${rootProject.version}"
+    compile 'io.reactivex:rxjava:1.2.9'
+    compile 'io.reactivex.rxjava2:rxjava:2.0.8'
+    sqliteCompile "alchemy:alchemy-android:${rootProject.version}"
+    sqliteAnnotationProcessor "alchemy:alchemy-sqlite-compiler:${rootProject.version}"
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+        exclude group: 'org.hamcrest'
+    })
+    androidTestCompile rootProject.deps.junit
+    androidTestCompile rootProject.deps.hamcrest
+}

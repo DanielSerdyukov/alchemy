@@ -166,6 +166,8 @@ class EntrySpec {
                 builder.addStatement("stmt.bindString($L, object.$L)", index, fieldName);
             } else if (ColumnType.DATE == columnType) {
                 builder.addStatement("stmt.bindLong($L, object.$L.getTime())", index, fieldName);
+            } else if (ColumnType.BLOB == columnType) {
+                builder.addStatement("stmt.bindBlob($L, object.$L)", index, fieldName);
             }
             if (columnType.isNullable()) {
                 builder.endControlFlow();
@@ -200,6 +202,8 @@ class EntrySpec {
                 builder.addStatement("object.$L = row.getColumnString($L)", fieldName, index);
             } else if (ColumnType.DATE == columnType) {
                 builder.addStatement("object.$L = new $T(row.getColumnLong($L))", fieldName, Date.class, index);
+            } else if (ColumnType.BLOB == columnType) {
+                builder.addStatement("object.$L = row.getColumnBlob($L)", fieldName, index);
             }
             ++index;
         }

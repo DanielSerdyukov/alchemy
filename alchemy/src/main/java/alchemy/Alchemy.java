@@ -22,6 +22,7 @@ import alchemy.query.AlchemyUpdate;
 import alchemy.query.AlchemyWhere;
 
 import java.util.Collection;
+import java.util.Collections;
 
 public class Alchemy {
 
@@ -35,12 +36,24 @@ public class Alchemy {
         return new OpWhere<>(mSource, mSource.where(clazz));
     }
 
+    public <T> AlchemyInsert<T> insert(T object) {
+        return insert(Collections.singletonList(object));
+    }
+
     public <T> AlchemyInsert<T> insert(Collection<T> objects) {
         return new OpInsert<>(mSource.insert(objects));
     }
 
+    public <T> AlchemyUpdate<T> update(T object) {
+        return update(Collections.singletonList(object));
+    }
+
     public <T> AlchemyUpdate<T> update(Collection<T> objects) {
         return new OpUpdate<>(mSource.update(objects));
+    }
+
+    public <T> AlchemyDelete delete(T object) {
+        return delete(Collections.singletonList(object));
     }
 
     public <T> AlchemyDelete delete(Collection<T> objects) {

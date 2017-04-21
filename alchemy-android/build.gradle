@@ -1,0 +1,89 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 25
+    buildToolsVersion "25.0.2"
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 25
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_7
+        targetCompatibility JavaVersion.VERSION_1_7
+    }
+
+    libraryVariants.all { variant ->
+        int versionCode = 0
+        (rootProject.version =~ /(\d+)/).collect {
+            Integer.parseInt(it[0] as String)
+        }.take(3).eachWithIndex { num, index ->
+            versionCode += (num * Math.max(1, (1000000 / Math.pow(1000, index))))
+        }
+        variant.mergedFlavor.versionCode = versionCode
+    }
+}
+
+configurations {
+    testCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
+    androidTestCompile.exclude group: 'org.hamcrest', module: 'hamcrest-core'
+}
+
+dependencies {
+    provided "alchemy:alchemy:${rootProject.version}"
+    compile "alchemy:alchemy-sqlite:${rootProject.version}"
+    androidTestCompile "alchemy:alchemy:${rootProject.version}"
+    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+        exclude group: 'com.android.support', module: 'support-annotations'
+        exclude group: 'org.hamcrest'
+    })
+    androidTestCompile rootProject.deps.junit
+    androidTestCompile rootProject.deps.hamcrest
+}
+
+apply plugin: 'maven-publish'
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId rootProject.group
+            artifactId project.name
+            version rootProject.version
+
+            artifact "${project.buildDir}/outputs/aar/${project.name}-release.aar"
+            artifact sourcesJar
+
+            pom.withXml {
+                asNode().children().last() + project.pomXml
+                def dependencies = asNode().appendNode('dependencies')
+                configurations.compile.allDependencies.each {
+                    def dependency = dependencies.appendNode('dependency')
+                    dependency.appendNode('groupId', it.group)
+                    dependency.appendNode('artifactId', it.name)
+                    dependency.appendNode('version', it.version)
+                    dependency.appendNode('scope', 'compile')
+                }
+            }
+        }
+    }
+}
+
+project.tasks.withType(PublishToMavenLocal).all { it.dependsOn 'assembleRelease' }

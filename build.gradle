@@ -86,7 +86,8 @@ configure([project(':alchemy'), project(':alchemy-annotations'),
 }
 
 configure([project(':alchemy'), project(':alchemy-annotations'),
-           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler')]) {
+           project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler'),
+           project(':alchemy-android')]) {
     apply plugin: 'com.jfrog.bintray'
 
     bintray {

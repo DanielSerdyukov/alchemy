@@ -3,4 +3,6 @@ include 'alchemy'
 include 'alchemy-annotations'
 include 'alchemy-sqlite'
 include 'alchemy-sqlite-compiler'
+include 'alchemy-android'
+include 'alchemy-tests'
 

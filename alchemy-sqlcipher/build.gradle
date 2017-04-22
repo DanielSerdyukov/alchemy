@@ -44,7 +44,9 @@ configurations {
 dependencies {
     provided "alchemy:alchemy:${rootProject.version}"
     compile "alchemy:alchemy-sqlite:${rootProject.version}"
+    provided 'net.zetetic:android-database-sqlcipher:3.5.7@aar'
     androidTestCompile "alchemy:alchemy:${rootProject.version}"
+    androidTestCompile 'net.zetetic:android-database-sqlcipher:3.5.7@aar'
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
         exclude group: 'org.hamcrest'

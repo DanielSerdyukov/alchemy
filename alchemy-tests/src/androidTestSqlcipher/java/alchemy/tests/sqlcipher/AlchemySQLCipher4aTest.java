@@ -14,38 +14,43 @@
  * limitations under the License.
  */
 
-package alchemy.tests.sqlite4a;
+package alchemy.tests.sqlcipher;
 
 import alchemy.Alchemy;
+import alchemy.sqlcipher.SQLCipherSource;
 import alchemy.sqlite.DefaultSchema;
-import alchemy.sqlite4a.SQLite4aSource;
 import alchemy.tests.AlchemyTest;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import com.getkeepsafe.relinker.ReLinker;
+import android.util.Log;
+import net.sqlcipher.database.SQLiteDatabase;
 import org.hamcrest.core.Is;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
-import sqlite4a.SQLite;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.channels.FileChannel;
 
 @RunWith(AndroidJUnit4.class)
-public class AlchemySQLite4aTest extends AlchemyTest {
+public class AlchemySQLCipher4aTest extends AlchemyTest {
 
     @BeforeClass
     public static void loadJni() {
-        ReLinker.loadLibrary(InstrumentationRegistry.getContext(), SQLite.JNI_LIB);
+        SQLiteDatabase.loadLibs(InstrumentationRegistry.getContext());
     }
 
     @Override
     protected Alchemy getAlchemy() {
-        final File databasePath = InstrumentationRegistry.getContext().getDatabasePath("sqlite4a.db");
+        final File databasePath = InstrumentationRegistry.getContext().getDatabasePath("sqlcipher.db");
         if (databasePath.exists()) {
             Assert.assertThat(databasePath.delete(), Is.is(true));
         }
-        return new Alchemy(new SQLite4aSource(new DefaultSchema(1), databasePath.getAbsolutePath()));
+        return new Alchemy(new SQLCipherSource(new DefaultSchema(1),
+                databasePath.getAbsolutePath(), "test123"));
     }
 
 }

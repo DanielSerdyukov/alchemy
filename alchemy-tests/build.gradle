@@ -21,6 +21,7 @@ android {
     productFlavors {
         sqlite
         sqlite4a
+        sqlcipher
     }
 
     packagingOptions {
@@ -38,12 +39,22 @@ dependencies {
     compile "alchemy:alchemy-annotations:${rootProject.version}"
     compile 'io.reactivex:rxjava:1.2.9'
     compile 'io.reactivex.rxjava2:rxjava:2.0.8'
+
     sqliteCompile "alchemy:alchemy-android:${rootProject.version}"
+
     sqlite4aCompile "alchemy:alchemy-sqlite4a:${rootProject.version}"
     sqlite4aCompile 'sqlite4a:sqlite4a:3.18.0'
     sqlite4aCompile 'com.getkeepsafe.relinker:relinker:1.2.1'
+
+    sqlcipherCompile "alchemy:alchemy-sqlcipher:${rootProject.version}"
+    sqlcipherCompile 'net.zetetic:android-database-sqlcipher:3.5.7@aar'
+
     sqliteAnnotationProcessor "alchemy:alchemy-sqlite-compiler:${rootProject.version}"
+
     sqlite4aAnnotationProcessor "alchemy:alchemy-sqlite-compiler:${rootProject.version}"
+
+    sqlcipherAnnotationProcessor "alchemy:alchemy-sqlite-compiler:${rootProject.version}"
+
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
         exclude group: 'org.hamcrest'

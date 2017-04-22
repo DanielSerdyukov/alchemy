@@ -87,7 +87,8 @@ configure([project(':alchemy'), project(':alchemy-annotations'),
 
 configure([project(':alchemy'), project(':alchemy-annotations'),
            project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler'),
-           project(':alchemy-android'), project(':alchemy-sqlite4a')]) {
+           project(':alchemy-android'), project(':alchemy-sqlite4a'),
+           project(':alchemy-sqlcipher')]) {
     ext {
         pomXml = {
             name project.name
@@ -117,7 +118,8 @@ configure([project(':alchemy'), project(':alchemy-annotations'),
 
 configure([project(':alchemy'), project(':alchemy-annotations'),
            project(':alchemy-sqlite'), project(':alchemy-sqlite-compiler'),
-           project(':alchemy-android')]) {
+           project(':alchemy-android'), project(':alchemy-sqlite4a'),
+           project(':alchemy-sqlcipher')]) {
     apply plugin: 'com.jfrog.bintray'
 
     bintray {

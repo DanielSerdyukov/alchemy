@@ -1,4 +1,4 @@
-# Alchemy
+# Alchemy [![Apache License](https://img.shields.io/badge/license-Apache%20v2-blue.svg)](https://github.com/DanielSerdyukov/alchemy/blob/master/LICENSE)
 Powerful object mapping for Android with RxJava and Java 8 support.
 
 Examples

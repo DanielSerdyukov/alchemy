@@ -23,7 +23,7 @@ import com.squareup.javapoet.ClassName;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 
 class EntryRule implements ProcessingRule {
 
@@ -48,9 +48,9 @@ class EntryRule implements ProcessingRule {
         if (ElementKind.PACKAGE != enclosingElement.getKind()) {
             throw new RuntimeException("Nested classes not supported as Entry");
         }
-        final ClassName entryClassName = ClassName.get(
-                ((PackageElement) enclosingElement).getQualifiedName().toString(),
-                element.getSimpleName() + "_Entry");
+        final ClassName modelClass = ClassName.get((TypeElement) element);
+        final ClassName entryClassName = ClassName.get(modelClass.packageName(),
+                modelClass.simpleName() + "_Entry");
         final EntrySpec entrySpec = new EntrySpec(element, entryClassName);
         final TableSpec tableSpec = new TableSpec(element, tableName, entrySpec);
         mCompileGraph.putEntrySpec(element, entrySpec);

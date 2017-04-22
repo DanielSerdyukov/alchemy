@@ -68,6 +68,10 @@ class EntrySpec {
         return mRelationSpecs;
     }
 
+    ContractSpec getContractSpec() {
+        return new ContractSpec(mElement, mColumnSpecs);
+    }
+
     void brewJava(Filer filer) throws Exception {
         if (mPrimaryKey == null) {
             throw new IllegalStateException("No such field annotated with @PrimaryKey");

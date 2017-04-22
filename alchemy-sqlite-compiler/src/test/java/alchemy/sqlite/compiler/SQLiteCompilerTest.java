@@ -25,8 +25,10 @@ public class SQLiteCompilerTest {
                         JavaFileObjects.forResource("generated/alchemy/sqlite/User_Table.java"),
                         JavaFileObjects.forResource("generated/models/groups/Group_Entry.java"),
                         JavaFileObjects.forResource("generated/models/groups/Group_Admin.java"),
-//                        JavaFileObjects.forResource("generated/models/groups/Group_Users.java"),
-                        JavaFileObjects.forResource("generated/models/users/User_Entry.java")
+                        JavaFileObjects.forResource("generated/models/groups/Group_Users.java"),
+                        JavaFileObjects.forResource("generated/models/groups/GroupContract.java"),
+                        JavaFileObjects.forResource("generated/models/users/User_Entry.java"),
+                        JavaFileObjects.forResource("generated/models/users/UserContract.java")
                 );
     }
 

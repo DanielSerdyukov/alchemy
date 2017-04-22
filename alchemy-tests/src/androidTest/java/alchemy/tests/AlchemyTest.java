@@ -20,6 +20,7 @@ import alchemy.Alchemy;
 import alchemy.tests.group.Group;
 import alchemy.tests.matchers.IterableContains;
 import alchemy.tests.user.User;
+import alchemy.tests.user.UserContract;
 import org.hamcrest.core.IsCollectionContaining;
 import org.hamcrest.core.IsNot;
 import org.junit.Assert;
@@ -59,7 +60,7 @@ public abstract class AlchemyTest {
         }
         mAlchemy.update(forUpdate).run();
         final List<User> updated = mAlchemy.where(User.class)
-                .startsWith("name", "Jim")
+                .startsWith(UserContract.NAME, "Jim")
                 .fetch().list();
         Assert.assertThat(updated, IterableContains.inAnyOrder(forUpdate));
     }
@@ -105,7 +106,7 @@ public abstract class AlchemyTest {
                 deleted.add(user);
             }
         }
-        mAlchemy.where(User.class).lessThan("age", 25).delete().run();
+        mAlchemy.where(User.class).lessThan(UserContract.AGE, 25).delete().run();
         final List<User> allUsers = mAlchemy.where(User.class).fetch().list();
         Assert.assertThat(allUsers, IsNot.not(IterableContains.inAnyOrder(deleted)));
     }

@@ -72,6 +72,7 @@ class CompileGraph {
                 relationSpec.brewJava(filer);
             }
             entrySpec.brewJava(filer);
+            entrySpec.getContractSpec().brewJava(filer);
         }
         for (final Map.Entry<String, Map<Element, TableSpec>> entry : mSchemas.entrySet()) {
             final SchemaSpec schemaSpec = new SchemaSpec(entry.getKey());
